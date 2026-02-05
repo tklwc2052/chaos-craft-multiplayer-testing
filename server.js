@@ -14,7 +14,7 @@ let forklift = {
     y: 0, 
     z: 0, 
     ry: 0, 
-    forkHeight: 0.3,
+    forkHeight: 0.1, // Default height
     driverId: null 
 };
 
