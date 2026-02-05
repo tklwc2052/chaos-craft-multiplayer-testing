@@ -23,7 +23,9 @@ function init3D() {
     scene = new THREE.Scene();
     scene.background = new THREE.Color(0x87ceeb); 
     camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    
+    // Force Euler order to YXZ for consistent character rotation
+    camera.rotation.order = 'YXZ';
+
     renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
@@ -63,25 +65,28 @@ function init3D() {
 
 function createPlayerMesh(color) {
     const group = new THREE.Group();
+    // Body
     const body = new THREE.Mesh(new THREE.BoxGeometry(1, 2, 1), new THREE.MeshStandardMaterial({ color: parseInt(color, 16) }));
     group.add(body);
 
+    // Eyes - Positioned at Z: -0.51 (Front)
     const eyeMat = new THREE.MeshBasicMaterial({ color: 0x000000 }); 
     const leftEye = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.05), eyeMat);
     leftEye.position.set(-0.25, 0.6, -0.51); 
     const rightEye = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.05), eyeMat);
     rightEye.position.set(0.25, 0.6, -0.51); 
     group.add(leftEye, rightEye);
+    
     return group;
 }
 
-// HEARTBEAT LOOP FIX: Rotation check
+// HEARTBEAT LOOP FIX
 setInterval(() => {
     if (controls && controls.isLocked) {
-        // We use camera.rotation.y, but ensure it's checked against the last sent value accurately
+        // Use Euler.y directly from the camera
         let currentRY = camera.rotation.y;
 
-        if (camera.position.x !== lastSentPos.x || camera.position.y !== lastSentPos.y || camera.position.z !== lastSentPos.z || currentRY !== lastSentPos.ry) {
+        if (camera.position.x !== lastSentPos.x || camera.position.y !== lastSentPos.y || camera.position.z !== lastSentPos.z || Math.abs(currentRY - lastSentPos.ry) > 0.01) {
             socket.emit('move', { 
                 x: camera.position.x, 
                 y: camera.position.y, 
@@ -93,6 +98,29 @@ setInterval(() => {
     }
 }, 50);
 
+socket.on('update-players', (serverPlayers) => {
+    Object.keys(serverPlayers).forEach(id => {
+        if (id !== socket.id && !otherPlayers[id]) {
+            const mesh = createPlayerMesh(serverPlayers[id].color);
+            scene.add(mesh);
+            otherPlayers[id] = mesh;
+        }
+    });
+});
+
+socket.on('player-moved', (data) => { 
+    if (otherPlayers[data.id]) {
+        otherPlayers[data.id].position.set(data.pos.x, data.pos.y - 0.8, data.pos.z);
+        // Force the rotation on the mesh
+        otherPlayers[data.id].rotation.y = data.pos.ry;
+    }
+});
+
+socket.on('player-left', (id) => { 
+    if (otherPlayers[id]) { scene.remove(otherPlayers[id]); delete otherPlayers[id]; } 
+});
+
+// Tree and Click logic remains the same
 socket.on('init-trees', (serverTrees) => {
     serverTrees.forEach(t => {
         const group = new THREE.Group();
@@ -106,32 +134,6 @@ socket.on('init-trees', (serverTrees) => {
         scene.add(group);
         treeMeshes[t.id] = group;
     });
-});
-
-socket.on('update-players', (serverPlayers) => {
-    Object.keys(serverPlayers).forEach(id => {
-        if (id !== socket.id && !otherPlayers[id]) {
-            const mesh = createPlayerMesh(serverPlayers[id].color);
-            scene.add(mesh);
-            otherPlayers[id] = mesh;
-        }
-        if(otherPlayers[id]) {
-            otherPlayers[id].position.set(serverPlayers[id].x, serverPlayers[id].y - 0.8, serverPlayers[id].z);
-            otherPlayers[id].rotation.y = serverPlayers[id].ry;
-        }
-    });
-});
-
-socket.on('player-moved', (data) => { 
-    if (otherPlayers[data.id]) {
-        otherPlayers[data.id].position.set(data.pos.x, data.pos.y - 0.8, data.pos.z);
-        // Direct rotation sync
-        otherPlayers[data.id].rotation.y = data.pos.ry;
-    }
-});
-
-socket.on('player-left', (id) => { 
-    if (otherPlayers[id]) { scene.remove(otherPlayers[id]); delete otherPlayers[id]; } 
 });
 
 function checkTreeClick() {
