@@ -2,7 +2,7 @@ const socket = io();
 let scene, camera, renderer, controls, raycaster;
 let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false, isShifting = false;
 let velocity = new THREE.Vector3(), direction = new THREE.Vector3();
-let otherPlayers = {}, treeMeshes = {}, coins = 0;
+let otherPlayers = {}, treeMeshes = {}, treeData = [], coins = 0;
 
 const GRAVITY = 24.0; 
 const JUMP_FORCE = 10.0; 
@@ -23,7 +23,6 @@ function init3D() {
     scene = new THREE.Scene();
     scene.background = new THREE.Color(0x87ceeb); 
     camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    // Force Euler order to YXZ for consistent character rotation
     camera.rotation.order = 'YXZ';
 
     renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -65,38 +64,54 @@ function init3D() {
 
 function createPlayerMesh(color) {
     const group = new THREE.Group();
-    // Body
     const body = new THREE.Mesh(new THREE.BoxGeometry(1, 2, 1), new THREE.MeshStandardMaterial({ color: parseInt(color, 16) }));
     group.add(body);
-
-    // Eyes - Positioned at Z: -0.51 (Front)
     const eyeMat = new THREE.MeshBasicMaterial({ color: 0x000000 }); 
     const leftEye = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.05), eyeMat);
     leftEye.position.set(-0.25, 0.6, -0.51); 
     const rightEye = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.05), eyeMat);
     rightEye.position.set(0.25, 0.6, -0.51); 
     group.add(leftEye, rightEye);
-    
     return group;
 }
 
-// HEARTBEAT LOOP FIX
+// COLLISION DETECTION LOGIC
+function checkCollision(nextX, nextZ) {
+    for (let tree of treeData) {
+        let dx = nextX - tree.x;
+        let dz = nextZ - tree.z;
+        let distance = Math.sqrt(dx * dx + dz * dz);
+        if (distance < 0.8) return true; // 0.8 is the combined radius of player + trunk
+    }
+    return false;
+}
+
 setInterval(() => {
     if (controls && controls.isLocked) {
-        // Use Euler.y directly from the camera
         let currentRY = camera.rotation.y;
-
         if (camera.position.x !== lastSentPos.x || camera.position.y !== lastSentPos.y || camera.position.z !== lastSentPos.z || Math.abs(currentRY - lastSentPos.ry) > 0.01) {
-            socket.emit('move', { 
-                x: camera.position.x, 
-                y: camera.position.y, 
-                z: camera.position.z, 
-                ry: currentRY 
-            });
+            socket.emit('move', { x: camera.position.x, y: camera.position.y, z: camera.position.z, ry: currentRY });
             lastSentPos = { x: camera.position.x, y: camera.position.y, z: camera.position.z, ry: currentRY };
         }
     }
 }, 50);
+
+// TREE SPAWNING FIX
+socket.on('init-trees', (serverTrees) => {
+    treeData = serverTrees;
+    serverTrees.forEach(t => {
+        const group = new THREE.Group();
+        const trunk = new THREE.Mesh(new THREE.BoxGeometry(0.8, 2, 0.8), new THREE.MeshLambertMaterial({color: 0x8B4513}));
+        trunk.position.y = 1;
+        const leaves = new THREE.Mesh(new THREE.BoxGeometry(2, 2, 2), new THREE.MeshLambertMaterial({color: 0x228B22}));
+        leaves.position.y = 3;
+        group.add(trunk, leaves);
+        group.position.set(t.x, 0, t.z);
+        group.userData.treeId = t.id;
+        scene.add(group);
+        treeMeshes[t.id] = group;
+    });
+});
 
 socket.on('update-players', (serverPlayers) => {
     Object.keys(serverPlayers).forEach(id => {
@@ -111,29 +126,12 @@ socket.on('update-players', (serverPlayers) => {
 socket.on('player-moved', (data) => { 
     if (otherPlayers[data.id]) {
         otherPlayers[data.id].position.set(data.pos.x, data.pos.y - 0.8, data.pos.z);
-        // Force the rotation on the mesh
         otherPlayers[data.id].rotation.y = data.pos.ry;
     }
 });
 
 socket.on('player-left', (id) => { 
     if (otherPlayers[id]) { scene.remove(otherPlayers[id]); delete otherPlayers[id]; } 
-});
-
-// Tree and Click logic remains the same
-socket.on('init-trees', (serverTrees) => {
-    serverTrees.forEach(t => {
-        const group = new THREE.Group();
-        const trunk = new THREE.Mesh(new THREE.BoxGeometry(0.8, 2, 0.8), new THREE.MeshLambertMaterial({color: 0x8B4513}));
-        trunk.position.y = 1;
-        const leaves = new THREE.Mesh(new THREE.BoxGeometry(2, 2, 2), new THREE.MeshLambertMaterial({color: 0x228B22}));
-        leaves.position.y = 3;
-        group.add(trunk, leaves);
-        group.position.set(t.x, 0, t.z);
-        group.userData.treeId = t.id;
-        scene.add(group);
-        treeMeshes[t.id] = group;
-    });
 });
 
 function checkTreeClick() {
@@ -150,7 +148,13 @@ function checkTreeClick() {
     }
 }
 
-socket.on('tree-removed', (id) => { if (treeMeshes[id]) { scene.remove(treeMeshes[id]); delete treeMeshes[id]; } });
+socket.on('tree-removed', (id) => { 
+    if (treeMeshes[id]) { 
+        scene.remove(treeMeshes[id]); 
+        delete treeMeshes[id]; 
+        treeData = treeData.filter(t => t.id !== id);
+    } 
+});
 
 function animate() {
     requestAnimationFrame(animate);
@@ -168,8 +172,23 @@ function animate() {
         direction.x = Number(moveRight) - Number(moveLeft);
         direction.normalize();
 
-        if (moveForward || moveBackward) velocity.z -= direction.z * speed * delta;
-        if (moveLeft || moveRight) velocity.x -= direction.x * speed * delta;
+        // Calculate potential movement
+        const moveX = direction.x * speed * delta * delta;
+        const moveZ = direction.z * speed * delta * delta;
+
+        // X-Axis Collision
+        if (!checkCollision(camera.position.x + (direction.x * 0.5), camera.position.z)) {
+            if (moveLeft || moveRight) velocity.x -= direction.x * speed * delta;
+        } else {
+            velocity.x = 0;
+        }
+
+        // Z-Axis Collision
+        if (!checkCollision(camera.position.x, camera.position.z - (direction.z * 0.5))) {
+            if (moveForward || moveBackward) velocity.z -= direction.z * speed * delta;
+        } else {
+            velocity.z = 0;
+        }
 
         controls.moveRight(-velocity.x * delta);
         controls.moveForward(-velocity.z * delta);
