@@ -17,7 +17,7 @@ document.getElementById('startBtn').addEventListener('click', () => {
 
 function init3D() {
     scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x87ceeb); // Sky blue
+    scene.background = new THREE.Color(0x87ceeb); 
     camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
     
     renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -36,7 +36,6 @@ function init3D() {
     raycaster = new THREE.Raycaster();
     scene.add(new THREE.HemisphereLight(0xeeeeff, 0x777788, 1));
     
-    // Ground
     const ground = new THREE.Mesh(
         new THREE.PlaneGeometry(200, 200), 
         new THREE.MeshPhongMaterial({color: 0x567d46})
@@ -44,7 +43,6 @@ function init3D() {
     ground.rotation.x = -Math.PI / 2;
     scene.add(ground);
 
-    // Keyboard Listeners
     window.addEventListener('keydown', (e) => {
         if(e.code==='KeyW') moveForward=true; 
         if(e.code==='KeyS') moveBackward=true;
@@ -64,25 +62,17 @@ function init3D() {
     animate();
 }
 
-// --- PLAYER VISUALS (2 PURE BLACK SQUARE EYES) ---
 function createPlayerMesh(color) {
     const group = new THREE.Group();
-    
-    // Main Body
     const body = new THREE.Mesh(
         new THREE.BoxGeometry(1, 2, 1), 
         new THREE.MeshStandardMaterial({ color: parseInt(color, 16) })
     );
     group.add(body);
 
-    // Pure Black Eyes
     const eyeMat = new THREE.MeshBasicMaterial({ color: 0x000000 }); 
-
-    // Left Eye
     const leftEye = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.05), eyeMat);
     leftEye.position.set(-0.25, 0.6, -0.51); 
-
-    // Right Eye
     const rightEye = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.05), eyeMat);
     rightEye.position.set(0.25, 0.6, -0.51); 
 
@@ -90,7 +80,6 @@ function createPlayerMesh(color) {
     return group;
 }
 
-// --- MULTIPLAYER SYNC ---
 socket.on('init-trees', (serverTrees) => {
     serverTrees.forEach(t => {
         const group = new THREE.Group();
@@ -111,9 +100,7 @@ function checkTreeClick() {
     const intersects = raycaster.intersectObjects(Object.values(treeMeshes), true);
     if (intersects.length > 0) {
         let obj = intersects[0].object;
-        while (obj.parent && obj.userData.treeId === undefined) {
-            obj = obj.parent;
-        }
+        while (obj.parent && obj.userData.treeId === undefined) { obj = obj.parent; }
         if (obj.userData.treeId !== undefined) {
             socket.emit('click-tree', obj.userData.treeId);
             coins += 100;
@@ -123,10 +110,7 @@ function checkTreeClick() {
 }
 
 socket.on('tree-removed', (id) => {
-    if (treeMeshes[id]) {
-        scene.remove(treeMeshes[id]);
-        delete treeMeshes[id];
-    }
+    if (treeMeshes[id]) { scene.remove(treeMeshes[id]); delete treeMeshes[id]; }
 });
 
 socket.on('update-players', (players) => {
@@ -141,24 +125,25 @@ socket.on('update-players', (players) => {
 
 socket.on('player-moved', (data) => { 
     if (otherPlayers[data.id]) {
-        otherPlayers[data.id].position.set(data.pos.x, data.pos.y - 0.8, data.pos.z);
-        otherPlayers[data.id].rotation.y = data.pos.ry;
+        // data.y is adjusted by the server/client for sneaking
+        otherPlayers[data.id].position.set(data.x, data.y - 0.8, data.z);
+        otherPlayers[data.id].rotation.y = data.ry;
     }
 });
 
 socket.on('player-left', (id) => { 
-    if (otherPlayers[id]) {
-        scene.remove(otherPlayers[id]);
-        delete otherPlayers[id];
-    } 
+    if (otherPlayers[id]) { scene.remove(otherPlayers[id]); delete otherPlayers[id]; } 
 });
 
-// --- GAME LOOP ---
 function animate() {
     requestAnimationFrame(animate);
     if (controls.isLocked) {
         let speed = isShifting ? 150.0 : 400.0;
+        let targetHeight = isShifting ? 1.2 : 1.6; // Lower height when sneaking
         let delta = 0.016;
+
+        // Smooth camera height transition
+        camera.position.y += (targetHeight - camera.position.y) * 0.2;
 
         velocity.x -= velocity.x * 10.0 * delta;
         velocity.z -= velocity.z * 10.0 * delta;
