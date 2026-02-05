@@ -4,6 +4,12 @@ let moveForward = false, moveBackward = false, moveLeft = false, moveRight = fal
 let velocity = new THREE.Vector3(), direction = new THREE.Vector3();
 let otherPlayers = {}, treeMeshes = {}, coins = 0;
 
+// Physics & Optimization
+const GRAVITY = 9.8;
+const JUMP_FORCE = 5.0;
+let canJump = false;
+let lastSentPos = { x: 0, y: 0, z: 0, ry: 0 };
+
 // --- LOGIN & START LOGIC ---
 document.getElementById('startBtn').addEventListener('click', () => {
     const name = document.getElementById('usernameInput').value || "Player";
@@ -26,20 +32,13 @@ function init3D() {
 
     controls = new THREE.PointerLockControls(camera, document.body);
     document.addEventListener('click', () => {
-        if (controls.isLocked) {
-            checkTreeClick();
-        } else {
-            controls.lock();
-        }
+        controls.isLocked ? checkTreeClick() : controls.lock();
     });
 
     raycaster = new THREE.Raycaster();
     scene.add(new THREE.HemisphereLight(0xeeeeff, 0x777788, 1));
     
-    const ground = new THREE.Mesh(
-        new THREE.PlaneGeometry(200, 200), 
-        new THREE.MeshPhongMaterial({color: 0x567d46})
-    );
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.MeshPhongMaterial({color: 0x567d46}));
     ground.rotation.x = -Math.PI / 2;
     scene.add(ground);
 
@@ -49,6 +48,7 @@ function init3D() {
         if(e.code==='KeyA') moveLeft=true; 
         if(e.code==='KeyD') moveRight=true;
         if(e.shiftKey) isShifting = true;
+        if(e.code==='Space' && canJump) { velocity.y += JUMP_FORCE; canJump = false; }
     });
     window.addEventListener('keyup', (e) => {
         if(e.code==='KeyW') moveForward=false; 
@@ -62,12 +62,10 @@ function init3D() {
     animate();
 }
 
+// --- PLAYER VISUALS (BLACK EYES) ---
 function createPlayerMesh(color) {
     const group = new THREE.Group();
-    const body = new THREE.Mesh(
-        new THREE.BoxGeometry(1, 2, 1), 
-        new THREE.MeshStandardMaterial({ color: parseInt(color, 16) })
-    );
+    const body = new THREE.Mesh(new THREE.BoxGeometry(1, 2, 1), new THREE.MeshStandardMaterial({ color: parseInt(color, 16) }));
     group.add(body);
 
     const eyeMat = new THREE.MeshBasicMaterial({ color: 0x000000 }); 
@@ -80,6 +78,19 @@ function createPlayerMesh(color) {
     return group;
 }
 
+// --- HEARTBEAT (Runs 20 times/sec to save Render CPU) ---
+setInterval(() => {
+    if (controls && controls.isLocked) {
+        if (camera.position.x !== lastSentPos.x || camera.position.y !== lastSentPos.y || camera.rotation.y !== lastSentPos.ry) {
+            socket.emit('move', { 
+                x: camera.position.x, y: camera.position.y, z: camera.position.z, ry: camera.rotation.y 
+            });
+            lastSentPos = { x: camera.position.x, y: camera.position.y, z: camera.position.z, ry: camera.rotation.y };
+        }
+    }
+}, 50);
+
+// --- MULTIPLAYER SYNC ---
 socket.on('init-trees', (serverTrees) => {
     serverTrees.forEach(t => {
         const group = new THREE.Group();
@@ -93,6 +104,27 @@ socket.on('init-trees', (serverTrees) => {
         scene.add(group);
         treeMeshes[t.id] = group;
     });
+});
+
+socket.on('update-players', (serverPlayers) => {
+    Object.keys(serverPlayers).forEach(id => {
+        if (id !== socket.id && !otherPlayers[id]) {
+            const mesh = createPlayerMesh(serverPlayers[id].color);
+            scene.add(mesh);
+            otherPlayers[id] = mesh;
+        }
+    });
+});
+
+socket.on('player-moved', (data) => { 
+    if (otherPlayers[data.id]) {
+        otherPlayers[data.id].position.set(data.pos.x, data.pos.y - 0.8, data.pos.z);
+        otherPlayers[data.id].rotation.y = data.pos.ry;
+    }
+});
+
+socket.on('player-left', (id) => { 
+    if (otherPlayers[id]) { scene.remove(otherPlayers[id]); delete otherPlayers[id]; } 
 });
 
 function checkTreeClick() {
@@ -109,44 +141,19 @@ function checkTreeClick() {
     }
 }
 
-socket.on('tree-removed', (id) => {
-    if (treeMeshes[id]) { scene.remove(treeMeshes[id]); delete treeMeshes[id]; }
-});
-
-socket.on('update-players', (players) => {
-    Object.keys(players).forEach(id => {
-        if (id !== socket.id && !otherPlayers[id]) {
-            const mesh = createPlayerMesh(players[id].color);
-            scene.add(mesh);
-            otherPlayers[id] = mesh;
-        }
-    });
-});
-
-socket.on('player-moved', (data) => { 
-    if (otherPlayers[data.id]) {
-        // data.y is adjusted by the server/client for sneaking
-        otherPlayers[data.id].position.set(data.x, data.y - 0.8, data.z);
-        otherPlayers[data.id].rotation.y = data.ry;
-    }
-});
-
-socket.on('player-left', (id) => { 
-    if (otherPlayers[id]) { scene.remove(otherPlayers[id]); delete otherPlayers[id]; } 
-});
+socket.on('tree-removed', (id) => { if (treeMeshes[id]) { scene.remove(treeMeshes[id]); delete treeMeshes[id]; } });
 
 function animate() {
     requestAnimationFrame(animate);
     if (controls.isLocked) {
-        let speed = isShifting ? 150.0 : 400.0;
-        let targetHeight = isShifting ? 1.2 : 1.6; // Lower height when sneaking
         let delta = 0.016;
+        let speed = isShifting ? 150.0 : 400.0;
+        let targetHeight = isShifting ? 1.2 : 1.6;
 
-        // Smooth camera height transition
-        camera.position.y += (targetHeight - camera.position.y) * 0.2;
-
+        camera.position.y += (targetHeight - camera.position.y) * 0.2; // Crouch transition
         velocity.x -= velocity.x * 10.0 * delta;
         velocity.z -= velocity.z * 10.0 * delta;
+        velocity.y -= GRAVITY * delta;
 
         direction.z = Number(moveForward) - Number(moveBackward);
         direction.x = Number(moveRight) - Number(moveLeft);
@@ -157,13 +164,13 @@ function animate() {
 
         controls.moveRight(-velocity.x * delta);
         controls.moveForward(-velocity.z * delta);
+        camera.position.y += (velocity.y * delta);
 
-        socket.emit('move', { 
-            x: camera.position.x, 
-            y: camera.position.y, 
-            z: camera.position.z, 
-            ry: camera.rotation.y 
-        });
+        if (camera.position.y < targetHeight) {
+            velocity.y = 0;
+            camera.position.y = targetHeight;
+            canJump = true;
+        }
     }
     renderer.render(scene, camera);
 }
