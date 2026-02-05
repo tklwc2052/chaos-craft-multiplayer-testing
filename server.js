@@ -9,7 +9,6 @@ app.use(express.static(path.join(__dirname, 'public')));
 let players = {};
 let trees = [];
 
-// Initial tree spawn
 for (let i = 0; i < 20; i++) {
     trees.push({
         id: i,
@@ -19,20 +18,23 @@ for (let i = 0; i < 20; i++) {
 }
 
 io.on('connection', (socket) => {
-    // Initial state for a connected socket
+    // Force absolute spawn at center
     players[socket.id] = { 
         x: 0, y: 1.6, z: 0, ry: 0, 
         username: "Guest", 
         color: Math.floor(Math.random()*16777215).toString(16) 
     };
 
-    // Send trees to the new connection
     socket.emit('init-trees', trees);
 
     socket.on('join', (data) => {
         if(players[socket.id]) {
             players[socket.id].username = data.username || "Player";
-            // IMPORTANT: Tell EVERYONE to update their player lists
+            // Reset to spawn point on join
+            players[socket.id].x = 0;
+            players[socket.id].y = 1.6;
+            players[socket.id].z = 0;
+            players[socket.id].ry = 0;
             io.emit('update-players', players);
         }
     });
