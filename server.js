@@ -10,15 +10,22 @@ let players = {};
 let trees = [];
 let worldTime = 0;
 
-// Init trees
-for (let i = 0; i < 40; i++) {
-    trees.push({
-        id: i, x: Math.random() * 100 - 50, z: Math.random() * 100 - 50,
-        height: 1.5 + Math.random() * 2, isGrown: true, createdAt: Date.now() - 60000 
-    });
+// Generate trees immediately
+function generateInitialForest() {
+    trees = [];
+    for (let i = 0; i < 40; i++) {
+        trees.push({
+            id: i, 
+            x: Math.random() * 100 - 50, 
+            z: Math.random() * 100 - 50,
+            height: 1.5 + Math.random() * 2, 
+            isGrown: true, 
+            createdAt: Date.now() - 60000 
+        });
+    }
 }
+generateInitialForest();
 
-// 20 min cycle
 setInterval(() => {
     worldTime++;
     if (worldTime >= 1200) worldTime = 0;
@@ -27,23 +34,28 @@ setInterval(() => {
 
 io.on('connection', (socket) => {
     socket.on('join', (data) => {
-        players[socket.id] = { x: 0, y: 1.6, z: 0, ry: 0, username: data.username || "Guest", color: Math.floor(Math.random()*16777215).toString(16) };
+        players[socket.id] = { 
+            x: 0, y: 1.6, z: 0, ry: 0, 
+            username: data.username || "Guest", 
+            color: Math.floor(Math.random()*16777215).toString(16) 
+        };
+        
+        // Explicitly send trees to the new player
         socket.emit('init-trees', trees);
         socket.emit('time-sync', worldTime);
         io.emit('update-players', players);
     });
 
     socket.on('click-tree', (id) => {
-        const treeIndex = trees.findIndex(t => t.id === id);
-        if (treeIndex !== -1 && trees[treeIndex].isGrown) {
-            trees.splice(treeIndex, 1);
+        const index = trees.findIndex(t => t.id === id);
+        if (index !== -1 && trees[index].isGrown) {
+            trees.splice(index, 1);
             io.emit('tree-removed', id);
             socket.emit('gain-log');
         }
     });
 
     socket.on('drop-log', () => {
-        // Broadcast to everyone so they see the log move on the belt
         io.emit('animate-log-belt'); 
         setTimeout(() => { socket.emit('lumber-ready'); }, 10000);
     });
@@ -60,4 +72,4 @@ io.on('connection', (socket) => {
     socket.on('disconnect', () => { delete players[socket.id]; io.emit('player-left', socket.id); });
 });
 
-http.listen(3000, () => console.log('Server running'));
+http.listen(3000, () => console.log('Server running on port 3000'));
