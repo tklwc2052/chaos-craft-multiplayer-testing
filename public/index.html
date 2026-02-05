@@ -3,26 +3,27 @@
 <head>
     <title>Cha0sCraft Multiplayer</title>
     <style>
-        body { margin: 0; overflow: hidden; font-family: 'Courier New', Courier, monospace; }
-        #ui { position: absolute; top: 10px; left: 10px; color: #00FF00; background: rgba(0,0,0,0.7); padding: 15px; border-radius: 8px; pointer-events: none; }
+        body { margin: 0; overflow: hidden; font-family: 'Courier New', Courier, monospace; background-color: #000; }
+        #ui { position: absolute; top: 10px; left: 10px; color: #00FF00; background: rgba(0,0,0,0.7); padding: 15px; border-radius: 8px; pointer-events: none; display: none; }
         #login { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #87ceeb; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 100; }
-        input { padding: 10px; font-size: 20px; border: none; border-radius: 5px; margin-bottom: 10px; }
-        button { padding: 10px 20px; font-size: 20px; cursor: pointer; background: #567d46; color: white; border: none; border-radius: 5px; }
-        #crosshair { position: absolute; top: 50%; left: 50%; width: 10px; height: 10px; background: white; border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; border: 2px solid black; }
+        input { padding: 15px; font-size: 20px; border: 2px solid #567d46; border-radius: 5px; margin-bottom: 10px; outline: none; }
+        button { padding: 15px 30px; font-size: 20px; cursor: pointer; background: #567d46; color: white; border: none; border-radius: 5px; font-weight: bold; }
+        button:hover { background: #456338; }
+        #crosshair { position: absolute; top: 50%; left: 50%; width: 10px; height: 10px; background: white; border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; border: 2px solid black; display: none; }
     </style>
 </head>
 <body>
     <div id="login">
-        <h1 style="color: white; text-shadow: 2px 2px black;">CHA0SCRAFT</h1>
+        <h1 style="color: white; text-shadow: 3px 3px 0px #567d46; font-size: 50px;">CHA0SCRAFT</h1>
         <input type="text" id="usernameInput" placeholder="Enter Username" maxlength="12">
-        <button onclick="joinGame()">START CHAOS</button>
+        <button id="startBtn">START CHAOS</button>
     </div>
 
     <div id="crosshair"></div>
     <div id="ui">
         NAME: <span id="userNameDisplay">Guest</span><br>
         COINS: $<span id="coinDisplay">0</span><br><br>
-        <small>WASD TO MOVE | CLICK TREES</small>
+        <small>CLICK TO LOCK MOUSE<br>WASD TO MOVE | CLICK TREES</small>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
