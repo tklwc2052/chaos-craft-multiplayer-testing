@@ -1,14 +1,21 @@
 const express = require('express');
+const path = require('path'); // Add this for file paths
 const app = express();
 const http = require('http').createServer(app);
 const io = require('socket.io')(http, { cors: { origin: "*" } });
 
-app.use(express.static('public'));
+// This line tells Express to look INSIDE the 'public' folder for index.html
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Fallback: If someone goes to the root, send them index.html explicitly
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 
 let players = {};
 let trees = [];
 
-// Generate trees on server start
+// Generate trees
 for (let i = 0; i < 15; i++) {
     trees.push({
         id: i,
@@ -19,8 +26,6 @@ for (let i = 0; i < 15; i++) {
 
 io.on('connection', (socket) => {
     players[socket.id] = { x: 0, y: 1.6, z: 0, username: "Guest", color: Math.floor(Math.random()*16777215).toString(16) };
-
-    // Send existing trees to new player
     socket.emit('init-trees', trees);
 
     socket.on('join', (data) => {
@@ -38,7 +43,6 @@ io.on('connection', (socket) => {
     });
 
     socket.on('click-tree', (treeId) => {
-        // Remove tree and tell everyone
         trees = trees.filter(t => t.id !== treeId);
         io.emit('tree-removed', treeId);
     });
