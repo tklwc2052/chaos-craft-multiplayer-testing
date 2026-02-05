@@ -10,11 +10,16 @@ let players = {};
 let trees = [];
 let forkliftPos = { x: -10, y: 0, z: -10, ry: 0, forkY: 0.5 };
 
-// Initial Forest
+// Initial Forest Generation
 for (let i = 0; i < 40; i++) {
     trees.push({
-        id: "tree_" + i, x: Math.random() * 100 - 50, z: Math.random() * 100 - 50,
-        height: 1.5 + Math.random() * 2, isGrown: true, createdAt: Date.now() - 60000, health: 3
+        id: "tree_" + i, 
+        x: Math.random() * 100 - 50, 
+        z: Math.random() * 100 - 50,
+        height: 1.5 + Math.random() * 2, 
+        isGrown: true, 
+        createdAt: Date.now() - 60000, 
+        health: 3
     });
 }
 
@@ -22,11 +27,12 @@ io.on('connection', (socket) => {
     socket.on('join', (data) => {
         players[socket.id] = { 
             id: socket.id, 
-            x: 0, y: 5.0, z: 0, ry: 0, // FIX: Start at Y=5 to avoid floor trap
+            x: 0, y: 5.0, z: 0, ry: 0, 
             username: data.username || "Guest", 
             color: Math.floor(Math.random()*16777215).toString(16),
             coins: 100 
         };
+        // Send world data immediately
         socket.emit('init-trees', trees);
         socket.emit('current-players', players);
         socket.emit('init-forklift', forkliftPos);
@@ -73,4 +79,4 @@ io.on('connection', (socket) => {
     });
 });
 
-http.listen(3000, () => console.log('Server started on port 3000'));
+http.listen(3000, () => console.log('Lumber Sim Live!'));
