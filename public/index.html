@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>wood</title>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: sans-serif; }
+        #ui { position: absolute; top: 10px; left: 10px; color: yellow; background: rgba(0,0,0,0.5); padding: 10px; border-radius: 5px; }
+        #login { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; z-index: 10; }
+    </style>
+</head>
+<body>
+    <div id="login">
+        <input type="text" id="usernameInput" placeholder="Enter Username">
+        <button onclick="joinGame()">Join Game</button>
+    </div>
+
+    <div id="ui">
+        NAME: <span id="userNameDisplay">Guest</span><br>
+        COINS: <span id="coinDisplay">$0</span>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="game.js"></script>
+</body>
+</html>
