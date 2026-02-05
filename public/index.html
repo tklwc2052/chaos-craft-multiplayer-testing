@@ -1,24 +1,99 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Lumber Sim</title>
+    <title>Cha0sCraft Multiplayer</title>
     <style>
-        body { margin: 0; overflow: hidden; background: #000; font-family: sans-serif; }
-        #login { position: absolute; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: #111; z-index: 100; color: white; flex-direction: column; }
-        #ui { position: absolute; top: 10px; left: 10px; color: white; display: none; background: rgba(0,0,0,0.5); padding: 10px; }
-        input, button { padding: 10px; margin: 10px; font-size: 1.2rem; }
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            font-family: 'Courier New', Courier, monospace; 
+            background: #000; 
+        }
+        
+        /* The transparent overlay for stats and controls */
+        #ui { 
+            position: absolute; 
+            top: 10px; 
+            left: 10px; 
+            color: #00FF00; 
+            background: rgba(0,0,0,0.8); 
+            padding: 15px; 
+            border-radius: 8px; 
+            pointer-events: none; /* Let clicks pass through */
+            display: none; 
+            border: 2px solid #567d46; 
+            line-height: 1.5;
+        }
+
+        /* Login Screen */
+        #login { 
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%; 
+            background: #87ceeb; 
+            display: flex; 
+            flex-direction: column; 
+            justify-content: center; 
+            align-items: center; 
+            z-index: 100; 
+        }
+
+        input { 
+            padding: 15px; 
+            font-size: 20px; 
+            border: 3px solid #567d46; 
+            border-radius: 5px; 
+            margin-bottom: 10px; 
+            text-align: center;
+        }
+
+        button { 
+            padding: 15px 30px; 
+            font-size: 22px; 
+            cursor: pointer; 
+            background: #567d46; 
+            color: white; 
+            border: none; 
+            border-radius: 5px; 
+            box-shadow: 0 4px #2e4225; 
+            font-weight: bold;
+        }
+
+        button:active { 
+            box-shadow: 0 2px #2e4225; 
+            transform: translateY(2px); 
+        }
+
+        /* Removed Crosshair CSS since we aren't shooting/mining anymore */
     </style>
 </head>
 <body>
     <div id="login">
-        <h1>LOGISTICS SIM</h1>
-        <input type="text" id="usernameInput" placeholder="Name">
-        <button id="startBtn">START</button>
+        <h1 style="color: white; text-shadow: 4px 4px black; font-size: 60px; margin-bottom: 20px;">g-g-g-game i maed</h1>
+        <h2 style="color: #333; margin-top: -20px; margin-bottom: 30px;">FORKLIFT</h2>
+        <input type="text" id="usernameInput" placeholder="Username" maxlength="12">
+        <button id="startBtn">rah</button>
     </div>
-    <div id="ui">WASD to move | E to use Forklift</div>
+
+    <div id="ui">
+        <strong>PLAYER:</strong> <span id="userNameDisplay">...</span><br>
+        <hr style="border: 1px solid #567d46;">
+        <strong>CONTROLS:</strong><br>
+        [W,A,S,D] - Move<br>
+        [SPACE] - Jump<br>
+        <br>
+        <strong>FORKLIFT:</strong><br>
+        [E] - Enter/Exit Vehicle<br>
+        [R] - Raise Forks<br>
+        [F] - Lower Forks
+    </div>
+
     <script src="/socket.io/socket.io.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/js/controls/PointerLockControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/PointerLockControls.js"></script>
+    
     <script src="game.js"></script>
 </body>
 </html>
