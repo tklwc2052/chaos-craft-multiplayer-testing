@@ -19,18 +19,22 @@ for (let i = 0; i < 20; i++) {
 }
 
 io.on('connection', (socket) => {
-    // Added 'ry' for Rotation Y
+    // Initial state for a connected socket
     players[socket.id] = { 
         x: 0, y: 1.6, z: 0, ry: 0, 
         username: "Guest", 
         color: Math.floor(Math.random()*16777215).toString(16) 
     };
 
+    // Send trees to the new connection
     socket.emit('init-trees', trees);
 
     socket.on('join', (data) => {
-        if(players[socket.id]) players[socket.id].username = data.username || "Guest";
-        io.emit('update-players', players);
+        if(players[socket.id]) {
+            players[socket.id].username = data.username || "Player";
+            // IMPORTANT: Tell EVERYONE to update their player lists
+            io.emit('update-players', players);
+        }
     });
 
     socket.on('move', (data) => {
