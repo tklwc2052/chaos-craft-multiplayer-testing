@@ -8,14 +8,14 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 let players = {};
 
-// THE FORKLIFT STATE (Server Authority)
+// THE FORKLIFT STATE
 let forklift = {
     x: 0, 
     y: 0, 
     z: 0, 
     ry: 0, 
     forkHeight: 0.3,
-    driverId: null // Keeps track of who is driving
+    driverId: null 
 };
 
 io.on('connection', (socket) => {
@@ -26,14 +26,14 @@ io.on('connection', (socket) => {
         color: Math.floor(Math.random()*16777215).toString(16) 
     };
 
-    // 2. Send INITIAL STATE (Players + Forklift)
+    // 2. Send INITIAL STATE
     socket.emit('init-game', { players, forklift });
 
     // 3. Handle Join
     socket.on('join', (data) => {
         if(players[socket.id]) {
             players[socket.id].username = data.username || "Player";
-            // Reset pos
+            // Random spawn around center
             players[socket.id].x = Math.random() * 10 - 5; 
             players[socket.id].y = 1.6;
             players[socket.id].z = Math.random() * 10 - 5;
@@ -52,9 +52,8 @@ io.on('connection', (socket) => {
         }
     });
 
-    // 5. Handle Forklift Driving Logic
+    // 5. Handle Forklift Logic
     socket.on('request-drive', () => {
-        // Only let them drive if nobody else is driving
         if (forklift.driverId === null) {
             forklift.driverId = socket.id;
             io.emit('driver-status', { driverId: socket.id });
@@ -69,13 +68,11 @@ io.on('connection', (socket) => {
     });
 
     socket.on('move-forklift', (data) => {
-        // Only accept forklift moves from the current driver
         if (forklift.driverId === socket.id) {
             forklift.x = data.x;
             forklift.z = data.z;
             forklift.ry = data.ry;
             forklift.forkHeight = data.forkHeight;
-            // Broadcast to everyone else
             socket.broadcast.emit('update-forklift', forklift);
         }
     });
@@ -83,7 +80,6 @@ io.on('connection', (socket) => {
     // 6. Disconnect
     socket.on('disconnect', () => {
         delete players[socket.id];
-        // If the driver left, free up the seat!
         if (forklift.driverId === socket.id) {
             forklift.driverId = null;
             io.emit('driver-status', { driverId: null });
