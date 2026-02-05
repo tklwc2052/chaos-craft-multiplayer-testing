@@ -10,58 +10,77 @@ let players = {};
 let trees = [];
 let worldTime = 0;
 
-// Forest Setup
+// Initial forest generation
 for (let i = 0; i < 40; i++) {
     trees.push({
-        id: i, x: Math.random() * 100 - 50, z: Math.random() * 100 - 50,
-        height: 1.5 + Math.random() * 2, isGrown: true, createdAt: Date.now() - 60000 
+        id: "tree_" + i, 
+        x: Math.random() * 100 - 50, 
+        z: Math.random() * 100 - 50,
+        height: 1.5 + Math.random() * 2, 
+        isGrown: true, 
+        createdAt: Date.now() - 60000 
     });
 }
 
-io.on('connection', (socket) => {
-    console.log('User connected:', socket.id);
+// Day/Night cycle
+setInterval(() => {
+    worldTime++;
+    if (worldTime >= 1200) worldTime = 0;
+    io.emit('time-sync', worldTime);
+}, 1000);
 
+io.on('connection', (socket) => {
     socket.on('join', (data) => {
-        // Create the player object
         players[socket.id] = { 
             x: 0, y: 1.6, z: 0, ry: 0, 
             username: data.username || "Guest", 
             color: Math.floor(Math.random()*16777215).toString(16) 
         };
-        
-        // 1. Send trees to the new player
         socket.emit('init-trees', trees);
-        
-        // 2. Send the current list of ALL players to the new player
         socket.emit('current-players', players);
-        
-        // 3. Tell everyone else about this new player
         socket.broadcast.emit('new-player', { id: socket.id, info: players[socket.id] });
     });
 
     socket.on('move', (data) => {
         if (players[socket.id]) {
             Object.assign(players[socket.id], data);
-            // Broadcast movement to everyone else
             socket.broadcast.emit('player-moved', { id: socket.id, pos: data });
         }
     });
 
-    socket.on('disconnect', () => {
-        console.log('User disconnected:', socket.id);
-        delete players[socket.id];
-        io.emit('player-left', socket.id);
-    });
-
-    // ... (Keep existing click-tree, drop-log, etc.) ...
     socket.on('click-tree', (id) => {
-        const index = trees.findIndex(t => t.id === id);
+        const index = trees.findIndex(t => t.id == id);
         if (index !== -1 && trees[index].isGrown) {
             trees.splice(index, 1);
             io.emit('tree-removed', id);
             socket.emit('gain-log');
         }
     });
+
+    socket.on('place-tree', (pos) => {
+        const newTree = { 
+            id: "tree_" + Date.now(), 
+            x: pos.x, z: pos.z, 
+            height: 1.5 + Math.random() * 2, 
+            isGrown: false, createdAt: Date.now() 
+        };
+        trees.push(newTree);
+        io.emit('tree-added', newTree);
+    });
+
+    socket.on('drop-log', () => {
+        io.emit('animate-log-belt'); 
+        setTimeout(() => { socket.emit('lumber-ready'); }, 10000);
+    });
+
+    socket.on('sell-lumber', () => {
+        socket.emit('payment', 25); // Challenging economy
+    });
+
+    socket.on('disconnect', () => {
+        delete players[socket.id];
+        io.emit('player-left', socket.id);
+    });
 });
 
-http.listen(3000, () => console.log('Multiplayer Server Running on Port 3000'));
+http.listen(3000, () => console.log('Server running on port 3000'));
