@@ -4,13 +4,12 @@ let moveForward = false, moveBackward = false, moveLeft = false, moveRight = fal
 let velocity = new THREE.Vector3(), direction = new THREE.Vector3();
 let otherPlayers = {}, treeMeshes = {}, coins = 0;
 
-// Physics & Optimization
-const GRAVITY = 9.8;
-const JUMP_FORCE = 5.0;
+// SNAPPY PHYSICS TUNING
+const GRAVITY = 24.0; 
+const JUMP_FORCE = 10.0; 
 let canJump = false;
 let lastSentPos = { x: 0, y: 0, z: 0, ry: 0 };
 
-// --- LOGIN & START LOGIC ---
 document.getElementById('startBtn').addEventListener('click', () => {
     const name = document.getElementById('usernameInput').value || "Player";
     document.getElementById('userNameDisplay').innerText = name;
@@ -31,6 +30,11 @@ function init3D() {
     document.body.appendChild(renderer.domElement);
 
     controls = new THREE.PointerLockControls(camera, document.body);
+    
+    // Force spawn view alignment
+    camera.position.set(0, 1.6, 0);
+    camera.rotation.set(0, 0, 0);
+    
     document.addEventListener('click', () => {
         controls.isLocked ? checkTreeClick() : controls.lock();
     });
@@ -48,7 +52,10 @@ function init3D() {
         if(e.code==='KeyA') moveLeft=true; 
         if(e.code==='KeyD') moveRight=true;
         if(e.shiftKey) isShifting = true;
-        if(e.code==='Space' && canJump) { velocity.y += JUMP_FORCE; canJump = false; }
+        if(e.code==='Space' && canJump) { 
+            velocity.y = JUMP_FORCE; // Reset velocity to jump force for consistency
+            canJump = false; 
+        }
     });
     window.addEventListener('keyup', (e) => {
         if(e.code==='KeyW') moveForward=false; 
@@ -58,11 +65,9 @@ function init3D() {
         if(!e.shiftKey) isShifting = false;
     });
 
-    camera.position.set(0, 1.6, 5);
     animate();
 }
 
-// --- PLAYER VISUALS (BLACK EYES) ---
 function createPlayerMesh(color) {
     const group = new THREE.Group();
     const body = new THREE.Mesh(new THREE.BoxGeometry(1, 2, 1), new THREE.MeshStandardMaterial({ color: parseInt(color, 16) }));
@@ -73,15 +78,14 @@ function createPlayerMesh(color) {
     leftEye.position.set(-0.25, 0.6, -0.51); 
     const rightEye = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.05), eyeMat);
     rightEye.position.set(0.25, 0.6, -0.51); 
-
     group.add(leftEye, rightEye);
     return group;
 }
 
-// --- HEARTBEAT (Runs 20 times/sec to save Render CPU) ---
+// Heartbeat Loop (20Hz)
 setInterval(() => {
     if (controls && controls.isLocked) {
-        if (camera.position.x !== lastSentPos.x || camera.position.y !== lastSentPos.y || camera.rotation.y !== lastSentPos.ry) {
+        if (camera.position.x !== lastSentPos.x || camera.position.y !== lastSentPos.y || camera.position.z !== lastSentPos.z || camera.rotation.y !== lastSentPos.ry) {
             socket.emit('move', { 
                 x: camera.position.x, y: camera.position.y, z: camera.position.z, ry: camera.rotation.y 
             });
@@ -90,7 +94,6 @@ setInterval(() => {
     }
 }, 50);
 
-// --- MULTIPLAYER SYNC ---
 socket.on('init-trees', (serverTrees) => {
     serverTrees.forEach(t => {
         const group = new THREE.Group();
@@ -112,6 +115,10 @@ socket.on('update-players', (serverPlayers) => {
             const mesh = createPlayerMesh(serverPlayers[id].color);
             scene.add(mesh);
             otherPlayers[id] = mesh;
+        }
+        if(otherPlayers[id]) {
+            otherPlayers[id].position.set(serverPlayers[id].x, serverPlayers[id].y - 0.8, serverPlayers[id].z);
+            otherPlayers[id].rotation.y = serverPlayers[id].ry;
         }
     });
 });
@@ -150,7 +157,8 @@ function animate() {
         let speed = isShifting ? 150.0 : 400.0;
         let targetHeight = isShifting ? 1.2 : 1.6;
 
-        camera.position.y += (targetHeight - camera.position.y) * 0.2; // Crouch transition
+        camera.position.y += (targetHeight - camera.position.y) * 0.2; 
+
         velocity.x -= velocity.x * 10.0 * delta;
         velocity.z -= velocity.z * 10.0 * delta;
         velocity.y -= GRAVITY * delta;
