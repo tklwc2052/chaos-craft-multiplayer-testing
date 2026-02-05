@@ -33,7 +33,7 @@ function init3D() {
     camera.position.set(0, 1.6, 0);
     
     document.addEventListener('click', () => {
-        controls.isLocked ? checkTreeClick() : controls.lock();
+        if (controls.isLocked) checkTreeClick(); else controls.lock();
     });
 
     raycaster = new THREE.Raycaster();
@@ -62,6 +62,15 @@ function init3D() {
     animate();
 }
 
+// Check if a point (x, z) is inside any tree trunk
+function isColliding(x, z) {
+    for (let tree of treeData) {
+        let dist = Math.sqrt((x - tree.x)**2 + (z - tree.z)**2);
+        if (dist < 0.7) return true; 
+    }
+    return false;
+}
+
 function createPlayerMesh(color) {
     const group = new THREE.Group();
     const body = new THREE.Mesh(new THREE.BoxGeometry(1, 2, 1), new THREE.MeshStandardMaterial({ color: parseInt(color, 16) }));
@@ -75,36 +84,27 @@ function createPlayerMesh(color) {
     return group;
 }
 
-// COLLISION DETECTION LOGIC
-function checkCollision(nextX, nextZ) {
-    for (let tree of treeData) {
-        let dx = nextX - tree.x;
-        let dz = nextZ - tree.z;
-        let distance = Math.sqrt(dx * dx + dz * dz);
-        if (distance < 0.8) return true; // 0.8 is the combined radius of player + trunk
-    }
-    return false;
-}
-
 setInterval(() => {
     if (controls && controls.isLocked) {
-        let currentRY = camera.rotation.y;
-        if (camera.position.x !== lastSentPos.x || camera.position.y !== lastSentPos.y || camera.position.z !== lastSentPos.z || Math.abs(currentRY - lastSentPos.ry) > 0.01) {
-            socket.emit('move', { x: camera.position.x, y: camera.position.y, z: camera.position.z, ry: currentRY });
-            lastSentPos = { x: camera.position.x, y: camera.position.y, z: camera.position.z, ry: currentRY };
+        if (camera.position.x !== lastSentPos.x || camera.position.y !== lastSentPos.y || Math.abs(camera.rotation.y - lastSentPos.ry) > 0.01) {
+            socket.emit('move', { x: camera.position.x, y: camera.position.y, z: camera.position.z, ry: camera.rotation.y });
+            lastSentPos = { x: camera.position.x, y: camera.position.y, z: camera.position.z, ry: camera.rotation.y };
         }
     }
 }, 50);
 
-// TREE SPAWNING FIX
 socket.on('init-trees', (serverTrees) => {
+    console.log("Trees Loaded:", serverTrees.length);
     treeData = serverTrees;
     serverTrees.forEach(t => {
         const group = new THREE.Group();
-        const trunk = new THREE.Mesh(new THREE.BoxGeometry(0.8, 2, 0.8), new THREE.MeshLambertMaterial({color: 0x8B4513}));
-        trunk.position.y = 1;
+        // Trunk
+        const trunk = new THREE.Mesh(new THREE.BoxGeometry(0.8, t.height, 0.8), new THREE.MeshLambertMaterial({color: 0x8B4513}));
+        trunk.position.y = t.height / 2;
+        // Leaves
         const leaves = new THREE.Mesh(new THREE.BoxGeometry(2, 2, 2), new THREE.MeshLambertMaterial({color: 0x228B22}));
-        leaves.position.y = 3;
+        leaves.position.y = t.height + 1;
+        
         group.add(trunk, leaves);
         group.position.set(t.x, 0, t.z);
         group.userData.treeId = t.id;
@@ -139,7 +139,7 @@ function checkTreeClick() {
     const intersects = raycaster.intersectObjects(Object.values(treeMeshes), true);
     if (intersects.length > 0) {
         let obj = intersects[0].object;
-        while (obj.parent && obj.userData.treeId === undefined) { obj = obj.parent; }
+        while (obj.parent && obj.userData.treeId === undefined) obj = obj.parent;
         if (obj.userData.treeId !== undefined) {
             socket.emit('click-tree', obj.userData.treeId);
             coins += 100;
@@ -150,8 +150,7 @@ function checkTreeClick() {
 
 socket.on('tree-removed', (id) => { 
     if (treeMeshes[id]) { 
-        scene.remove(treeMeshes[id]); 
-        delete treeMeshes[id]; 
+        scene.remove(treeMeshes[id]); delete treeMeshes[id]; 
         treeData = treeData.filter(t => t.id !== id);
     } 
 });
@@ -172,28 +171,22 @@ function animate() {
         direction.x = Number(moveRight) - Number(moveLeft);
         direction.normalize();
 
-        // Calculate potential movement
-        const moveX = direction.x * speed * delta * delta;
-        const moveZ = direction.z * speed * delta * delta;
+        if (moveForward || moveBackward) velocity.z -= direction.z * speed * delta;
+        if (moveLeft || moveRight) velocity.x -= direction.x * speed * delta;
 
-        // X-Axis Collision
-        if (!checkCollision(camera.position.x + (direction.x * 0.5), camera.position.z)) {
-            if (moveLeft || moveRight) velocity.x -= direction.x * speed * delta;
-        } else {
-            velocity.x = 0;
-        }
+        // Collision Check: Check next potential position
+        let nextX = camera.position.x - (velocity.x * delta);
+        let nextZ = camera.position.z - (velocity.z * delta);
 
-        // Z-Axis Collision
-        if (!checkCollision(camera.position.x, camera.position.z - (direction.z * 0.5))) {
-            if (moveForward || moveBackward) velocity.z -= direction.z * speed * delta;
-        } else {
-            velocity.z = 0;
-        }
+        if (!isColliding(nextX, camera.position.z)) {
+            controls.moveRight(-velocity.x * delta);
+        } else { velocity.x = 0; }
 
-        controls.moveRight(-velocity.x * delta);
-        controls.moveForward(-velocity.z * delta);
+        if (!isColliding(camera.position.x, nextZ)) {
+            controls.moveForward(-velocity.z * delta);
+        } else { velocity.z = 0; }
+
         camera.position.y += (velocity.y * delta);
-
         if (camera.position.y < targetHeight) {
             velocity.y = 0;
             camera.position.y = targetHeight;
