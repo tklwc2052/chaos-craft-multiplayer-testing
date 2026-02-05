@@ -9,31 +9,35 @@ app.use(express.static(path.join(__dirname, 'public')));
 let players = {};
 
 // THE FORKLIFT STATE
+// This is the new part the server needs to know about!
 let forklift = {
     x: 0, 
     y: 0, 
     z: 0, 
     ry: 0, 
-    forkHeight: 0.1, // Default height
+    forkHeight: 0.1, 
     driverId: null 
 };
 
 io.on('connection', (socket) => {
-    // 1. Initialize new player
+    console.log('A player connected:', socket.id); // Check your terminal for this!
+
+    // Initialize new player
     players[socket.id] = { 
         x: 0, y: 1.6, z: 0, ry: 0, 
         username: "Guest", 
         color: Math.floor(Math.random()*16777215).toString(16) 
     };
 
-    // 2. Send INITIAL STATE
+    // --- CRITICAL FIX ---
+    // This sends the "init-game" signal your screen is waiting for.
     socket.emit('init-game', { players, forklift });
+    // --------------------
 
-    // 3. Handle Join
     socket.on('join', (data) => {
         if(players[socket.id]) {
             players[socket.id].username = data.username || "Player";
-            // Random spawn around center
+            // Random spawn to avoid stacking
             players[socket.id].x = Math.random() * 10 - 5; 
             players[socket.id].y = 1.6;
             players[socket.id].z = Math.random() * 10 - 5;
@@ -41,7 +45,6 @@ io.on('connection', (socket) => {
         }
     });
 
-    // 4. Handle Player Movement
     socket.on('move', (data) => {
         if (players[socket.id]) {
             players[socket.id].x = data.x;
@@ -52,7 +55,7 @@ io.on('connection', (socket) => {
         }
     });
 
-    // 5. Handle Forklift Logic
+    // Forklift Logic
     socket.on('request-drive', () => {
         if (forklift.driverId === null) {
             forklift.driverId = socket.id;
@@ -77,8 +80,8 @@ io.on('connection', (socket) => {
         }
     });
 
-    // 6. Disconnect
     socket.on('disconnect', () => {
+        console.log('Player disconnected:', socket.id);
         delete players[socket.id];
         if (forklift.driverId === socket.id) {
             forklift.driverId = null;
