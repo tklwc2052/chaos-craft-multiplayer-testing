@@ -1,37 +1,34 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Hardcore Lumber Mill</title>
+    <title>Forklift Forestry</title>
     <style>
-        body { margin: 0; overflow: hidden; font-family: monospace; background: #000; }
-        #login { position: absolute; width:100%; height:100%; background:rgba(0,0,0,0.8); color:white; display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:10; }
-        #ui { position: absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; display:none; }
-        .stats { position:absolute; top:20px; left:20px; color:white; background:rgba(0,0,0,0.7); padding:15px; pointer-events:auto; }
-        .hotbar { position:absolute; bottom:30px; left:50%; transform:translateX(-50%); display:flex; gap:10px; pointer-events:auto; }
-        .slot { width:60px; height:60px; background:rgba(0,0,0,0.6); border:2px solid #fff; color:white; display:flex; align-items:center; justify-content:center; font-size:24px; }
-        .slot.active { border-color: yellow; background: rgba(100,100,0,0.5); }
-        #crosshair { position:absolute; top:50%; left:50%; width:10px; height:10px; border:1px solid white; transform:translate(-50%,-50%); border-radius:50%; pointer-events:none; display:none; }
+        body { margin: 0; font-family: monospace; background: #000; overflow: hidden; }
+        #ui, #login { position: absolute; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; z-index: 5; }
+        #ui { display: none; pointer-events: none; }
+        .stats { position: absolute; top: 20px; left: 20px; color: white; background: rgba(0,0,0,0.8); padding: 15px; pointer-events: auto; }
+        .leaderboard { position: absolute; top: 20px; right: 20px; color: yellow; background: rgba(0,0,0,0.8); padding: 10px; width: 150px; }
+        .hotbar { position: absolute; bottom: 20px; display: flex; gap: 10px; pointer-events: auto; }
+        .slot { width: 50px; height: 50px; border: 2px solid white; color: white; display: flex; align-items: center; justify-content: center; }
+        .active { background: rgba(255,255,0,0.3); border-color: yellow; }
     </style>
 </head>
 <body>
     <div id="login">
-        <h1>LUMBER CHAOS</h1>
-        <input type="text" id="usernameInput" placeholder="Name..." maxlength="10"><br>
-        <button id="startBtn" style="padding:10px 20px; cursor:pointer;">START</button>
+        <input type="text" id="usernameInput" placeholder="Enter Name">
+        <button id="startBtn">START GAME</button>
     </div>
-    <div id="crosshair"></div>
     <div id="ui">
         <div class="stats">
             CASH: $<span id="coinDisplay">100</span><br>
-            SEEDS: <span id="saplingDisplay">0</span><br>
             LOGS: <span id="logDisplay">0</span><br>
-            READY: <span id="lumberReadyDisplay" style="color:#0f0">0</span>
+            <button onclick="buySapling()">BUY SEED ($20)</button>
         </div>
+        <div class="leaderboard" id="leaderboardList"></div>
         <div class="hotbar">
             <div id="slot1" class="slot active">🪓</div>
             <div id="slot2" class="slot">🌱</div>
             <div id="slot3" class="slot">🪵</div>
-            <button onclick="buySapling()" style="padding:0 10px; cursor:pointer; background:green; color:white; border:none;">BUY SEED ($20)</button>
         </div>
     </div>
     <script src="/socket.io/socket.io.js"></script>
