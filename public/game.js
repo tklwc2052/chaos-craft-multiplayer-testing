@@ -3,7 +3,11 @@ let scene, camera, renderer, controls, raycaster;
 let forklift, forkliftForks, isDrivingForklift = false, forkHeight = 0.5;
 let forkliftVel = 0, forkliftSteer = 0, keys = {};
 let treeMeshes = {}, otherPlayers = {}, lumberStackMeshes = [];
-let coins = 100, saplings = 0, logs = 0, selectedSlot = 1, lumberReadyCount = 0;
+let coins = 100, saplings = 0, logs = 0, selectedSlot = 1;
+let velocity = new THREE.Vector3(), direction = new THREE.Vector3();
+let canJump = false;
+
+const GRAVITY = 30.0; // Stronger gravity for snappy landing
 
 document.getElementById('startBtn').addEventListener('click', () => {
     document.getElementById('login').style.display = 'none';
@@ -15,25 +19,19 @@ document.getElementById('startBtn').addEventListener('click', () => {
 function init3D() {
     scene = new THREE.Scene();
     camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 5, 0); // Start high
+    
     renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
+    
     controls = new THREE.PointerLockControls(camera, document.body);
     raycaster = new THREE.Raycaster();
 
-    // Environment
     scene.add(new THREE.HemisphereLight(0xddeeff, 0x2d4c1e, 0.5));
-    const sun = new THREE.DirectionalLight(0xffffff, 0.8);
-    sun.position.set(10, 20, 10);
-    scene.add(sun);
-    const ground = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.MeshPhongMaterial({color: 0x2d4c1e}));
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(500, 500), new THREE.MeshPhongMaterial({color: 0x2d4c1e}));
     ground.rotation.x = -Math.PI/2;
     scene.add(ground);
-
-    // Depot Dock
-    const depot = new THREE.Mesh(new THREE.BoxGeometry(10, 0.5, 10), new THREE.MeshStandardMaterial({color: 0x444444}));
-    depot.position.set(-20, 0.25, 0);
-    scene.add(depot);
 
     initForklift();
     animate();
@@ -49,26 +47,45 @@ function initForklift() {
     const pL = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.1, 2), new THREE.MeshStandardMaterial({color: 0x555555}));
     const pR = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.1, 2), new THREE.MeshStandardMaterial({color: 0x555555}));
     pL.position.set(-0.5, 0, 1); pR.position.set(0.5, 0, 1);
-    forkliftForks.add(pL, pR); forkliftForks.position.set(0, 0.5, 1.7);
-    forklift.add(forkliftForks); scene.add(forklift);
+    forkliftForks.add(pL, pR); forklift.add(forkliftForks);
+    scene.add(forklift);
 }
 
-// Controls
 window.addEventListener('keydown', (e) => {
     keys[e.code] = true;
     if (e.code === 'KeyE') toggleForklift();
-    if (e.key === '1') selectedSlot = 1;
-    if (e.key === '2') selectedSlot = 2;
-    if (e.key === '3') selectedSlot = 3;
-    updateUI();
+    if (e.code === 'KeyW' || e.code === 'KeyS' || e.code === 'KeyA' || e.code === 'KeyD') {
+        if (!isDrivingForklift) {
+            if (e.code === 'KeyW') moveForward = true;
+            if (e.code === 'KeyS') moveBackward = true;
+            if (e.code === 'KeyA') moveLeft = true;
+            if (e.code === 'KeyD') moveRight = true;
+        }
+    }
 });
-window.addEventListener('keyup', (e) => keys[e.code] = false);
+
+window.addEventListener('keyup', (e) => {
+    keys[e.code] = false;
+    if (e.code === 'KeyW') moveForward = false;
+    if (e.code === 'KeyS') moveBackward = false;
+    if (e.code === 'KeyA') moveLeft = false;
+    if (e.code === 'KeyD') moveRight = false;
+});
+
+let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
 
 function toggleForklift() {
-    if (camera.position.distanceTo(forklift.position) < 5 || isDrivingForklift) {
-        isDrivingForklift = !isDrivingForklift;
-        if (isDrivingForklift) controls.unlock();
-        else controls.lock();
+    if (isDrivingForklift) {
+        isDrivingForklift = false;
+        // Move player away from forklift body on exit
+        camera.position.x += 3; 
+        camera.position.y = 1.8;
+        controls.lock();
+    } else {
+        if (camera.position.distanceTo(forklift.position) < 5) {
+            isDrivingForklift = true;
+            controls.unlock();
+        }
     }
 }
 
@@ -77,7 +94,7 @@ function animate() {
     const delta = 0.016;
 
     if (isDrivingForklift) {
-        // Rear-wheel steering physics
+        // FORKLIFT CONTROLS
         if (keys['KeyW']) forkliftVel += 0.02;
         if (keys['KeyS']) forkliftVel -= 0.02;
         forkliftVel *= 0.95;
@@ -87,41 +104,39 @@ function animate() {
         
         forklift.rotation.y += forkliftVel * forkliftSteer;
         forklift.translateZ(forkliftVel);
-
+        
         if (keys['KeyR']) forkHeight = Math.min(forkHeight + 0.05, 2.5);
         if (keys['KeyF']) forkHeight = Math.max(forkHeight - 0.05, 0.1);
         forkliftForks.position.y = forkHeight;
 
-        camera.position.set(forklift.position.x - Math.sin(forklift.rotation.y)*8, 5, forklift.position.z - Math.cos(forklift.rotation.y)*8);
+        camera.position.set(forklift.position.x - Math.sin(forklift.rotation.y)*10, 6, forklift.position.z - Math.cos(forklift.rotation.y)*10);
         camera.lookAt(forklift.position);
         
-        checkForkliftPickup();
-        checkDepotDelivery();
         socket.emit('update-forklift', { x: forklift.position.x, y: forklift.position.y, z: forklift.position.z, ry: forklift.rotation.y, forkY: forkHeight });
-    }
+    } else if (controls.isLocked) {
+        // FPS CONTROLS
+        velocity.x -= velocity.x * 10.0 * delta;
+        velocity.z -= velocity.z * 10.0 * delta;
+        velocity.y -= GRAVITY * delta;
 
-    // Tree growth & other players logic (omitted for brevity, keep from previous versions)
+        direction.z = Number(moveForward) - Number(moveBackward);
+        direction.x = Number(moveRight) - Number(moveLeft);
+        direction.normalize();
+
+        if (moveForward || moveBackward) velocity.z -= direction.z * 400.0 * delta;
+        if (moveLeft || moveRight) velocity.x -= direction.x * 400.0 * delta;
+
+        controls.moveRight(-velocity.x * delta);
+        controls.moveForward(-velocity.z * delta);
+        
+        camera.position.y += (velocity.y * delta);
+        if (camera.position.y < 1.8) {
+            velocity.y = 0;
+            camera.position.y = 1.8;
+            canJump = true;
+        }
+        
+        socket.emit('move', { x: camera.position.x, y: camera.position.y, z: camera.position.z, ry: camera.rotation.y });
+    }
     renderer.render(scene, camera);
 }
-
-function checkForkliftPickup() {
-    lumberStackMeshes.forEach(p => {
-        if (!p.userData.isCarried && p.position.distanceTo(forklift.position) < 3 && forkHeight < 0.5) {
-            p.userData.isCarried = true;
-            forkliftForks.add(p);
-            p.position.set(0, 0.1, 1);
-        }
-    });
-}
-
-function checkDepotDelivery() {
-    if (forklift.position.distanceTo(new THREE.Vector3(-20,0,0)) < 5 && forkHeight < 0.3) {
-        forkliftForks.children.forEach(c => {
-            if(c.userData.isCarried) {
-                socket.emit('sell-lumber');
-                forkliftForks.remove(c);
-            }
-        });
-    }
-}
-// (Include addTreeToScene, updateUI, and Socket Listeners from previous version)
