@@ -1,34 +1,26 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Forklift Forestry</title>
+    <title>Lumber Logistics Fixed</title>
     <style>
-        body { margin: 0; font-family: monospace; background: #000; overflow: hidden; }
-        #ui, #login { position: absolute; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; z-index: 5; }
+        body { margin: 0; background: #000; color: white; overflow: hidden; font-family: monospace; }
+        #ui, #login { position: absolute; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; }
         #ui { display: none; pointer-events: none; }
-        .stats { position: absolute; top: 20px; left: 20px; color: white; background: rgba(0,0,0,0.8); padding: 15px; pointer-events: auto; }
-        .leaderboard { position: absolute; top: 20px; right: 20px; color: yellow; background: rgba(0,0,0,0.8); padding: 10px; width: 150px; }
-        .hotbar { position: absolute; bottom: 20px; display: flex; gap: 10px; pointer-events: auto; }
-        .slot { width: 50px; height: 50px; border: 2px solid white; color: white; display: flex; align-items: center; justify-content: center; }
-        .active { background: rgba(255,255,0,0.3); border-color: yellow; }
+        .stats { position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.8); padding: 10px; pointer-events: auto; }
+        .reset-btn { background: red; color: white; border: none; padding: 5px; cursor: pointer; margin-top: 5px; }
     </style>
 </head>
 <body>
     <div id="login">
-        <input type="text" id="usernameInput" placeholder="Enter Name">
-        <button id="startBtn">START GAME</button>
+        <input type="text" id="usernameInput" placeholder="Enter Username">
+        <button id="startBtn">JOIN FOREST</button>
     </div>
     <div id="ui">
         <div class="stats">
             CASH: $<span id="coinDisplay">100</span><br>
             LOGS: <span id="logDisplay">0</span><br>
-            <button onclick="buySapling()">BUY SEED ($20)</button>
-        </div>
-        <div class="leaderboard" id="leaderboardList"></div>
-        <div class="hotbar">
-            <div id="slot1" class="slot active">🪓</div>
-            <div id="slot2" class="slot">🌱</div>
-            <div id="slot3" class="slot">🪵</div>
+            <button onclick="buySapling()">BUY SEED ($20)</button><br>
+            <button class="reset-btn" onclick="location.reload()">RELOAD IF STUCK</button>
         </div>
     </div>
     <script src="/socket.io/socket.io.js"></script>
