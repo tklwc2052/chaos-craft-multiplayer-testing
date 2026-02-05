@@ -9,7 +9,7 @@ const GRAVITY = 24.0;
 const JUMP_FORCE = 10.0; 
 let canJump = false;
 let lastSentPos = { x: 0, y: 0, z: 0, ry: 0 };
-let pendingGameData = null; // Store server data here until game starts
+let pendingGameData = null; 
 
 // FORKLIFT VARIABLES
 let forklift;
@@ -28,10 +28,9 @@ document.getElementById('startBtn').addEventListener('click', () => {
     init3D();
     socket.emit('join', { username: name });
 
-    // CHECK: Did the server send us the forklift while we were on the login screen?
     if (pendingGameData) {
         loadGameWorld(pendingGameData);
-        pendingGameData = null; // Clear the buffer
+        pendingGameData = null; 
     }
 });
 
@@ -50,16 +49,14 @@ function init3D() {
     camera.position.set(0, 1.6, 5); 
     
     document.addEventListener('click', () => {
-        if (!isDriving) controls.lock();
+        controls.lock();
     });
 
-    // Lighting
     scene.add(new THREE.HemisphereLight(0xeeeeff, 0x777788, 1));
     const dirLight = new THREE.DirectionalLight(0xffffff, 0.5);
     dirLight.position.set(10, 20, 10);
     scene.add(dirLight);
     
-    // Floor
     const ground = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.MeshPhongMaterial({color: 0x567d46}));
     ground.rotation.x = -Math.PI / 2;
     scene.add(ground);
@@ -93,15 +90,13 @@ function init3D() {
 
 // --- HELPER TO LOAD OBJECTS SAFELY ---
 function loadGameWorld(data) {
-    if (!scene) return; // Safety check
+    if (!scene) return; 
 
-    // 1. Setup Forklift
     if (!forklift) {
         forklift = createForklift();
         scene.add(forklift);
     }
     
-    // Sync Position
     forklift.position.set(data.forklift.x, data.forklift.y, data.forklift.z);
     forklift.rotation.y = data.forklift.ry;
     if (forklift.userData.forksObj) {
@@ -109,7 +104,6 @@ function loadGameWorld(data) {
     }
     currentDriverId = data.forklift.driverId;
 
-    // 2. Setup Existing Players
     Object.keys(data.players).forEach(id => {
         if (id !== socket.id && !otherPlayers[id]) {
             const mesh = createPlayerMesh(data.players[id].color);
@@ -119,50 +113,98 @@ function loadGameWorld(data) {
     });
 }
 
+// --- DETAILED "CAT" STYLE FORKLIFT MODEL ---
 function createForklift() {
     const group = new THREE.Group();
-    // Chassis
-    const chassis = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.6, 2.5), new THREE.MeshLambertMaterial({ color: 0xFFD700 }));
-    chassis.position.y = 0.5;
-    group.add(chassis);
 
-    // Roll Cage
-    const cageMat = new THREE.MeshLambertMaterial({ color: 0x111111 });
-    const fl = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.4, 0.1), cageMat); fl.position.set(-0.6, 1.4, 0.5);
-    const fr = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.4, 0.1), cageMat); fr.position.set(0.6, 1.4, 0.5);
-    const rl = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.4, 0.1), cageMat); rl.position.set(-0.6, 1.4, -1.0);
-    const rr = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.4, 0.1), cageMat); rr.position.set(0.6, 1.4, -1.0);
-    const roof = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.1, 1.7), cageMat); roof.position.set(0, 2.1, -0.25);
-    group.add(fl, fr, rl, rr, roof);
+    // --- MATERIALS ---
+    const yellowMat = new THREE.MeshLambertMaterial({ color: 0xFFA500 }); // CAT Orange/Yellow
+    const blackMat = new THREE.MeshLambertMaterial({ color: 0x111111 }); // Tires/Cage
+    const greyMat = new THREE.MeshLambertMaterial({ color: 0x333333 });  // Mast
+    const darkGreyMat = new THREE.MeshLambertMaterial({ color: 0x222222 }); // Seat
 
-    // Mast
-    const mast = new THREE.Mesh(new THREE.BoxGeometry(1.0, 3.0, 0.2), new THREE.MeshLambertMaterial({ color: 0x333333 }));
-    mast.position.set(0, 1.5, 1.35);
-    group.add(mast);
+    // 1. CHASSIS
+    const baseGeo = new THREE.BoxGeometry(1.4, 0.5, 2.2);
+    const base = new THREE.Mesh(baseGeo, yellowMat);
+    base.position.y = 0.5;
+    group.add(base);
 
-    // Forks Group
-    const forks = new THREE.Group();
-    forks.position.set(0, 0.3, 1.45); 
-    const plate = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.5, 0.1), cageMat);
-    forks.add(plate);
-    const tinesGeo = new THREE.BoxGeometry(0.15, 0.1, 1.5);
-    const leftTine = new THREE.Mesh(tinesGeo, cageMat); leftTine.position.set(-0.4, 0, 0.7);
-    const rightTine = new THREE.Mesh(tinesGeo, cageMat); rightTine.position.set(0.4, 0, 0.7);
-    forks.add(leftTine, rightTine);
-    
-    group.add(forks);
-    group.userData.forksObj = forks;
+    // Rear Counterweight
+    const counterWeight = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.6, 0.8), yellowMat);
+    counterWeight.position.set(0, 1.0, 0.7); 
+    group.add(counterWeight);
+
+    // Engine Cover
+    const engineCover = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.1, 0.8), yellowMat);
+    engineCover.position.set(0, 0.8, -0.1);
+    group.add(engineCover);
+
+    // 2. WHEELS
+    const wheelGeo = new THREE.CylinderGeometry(0.35, 0.35, 0.3, 32);
+    wheelGeo.rotateZ(Math.PI / 2);
+    const fl = new THREE.Mesh(wheelGeo, blackMat); fl.position.set(-0.7, 0.35, -0.6);
+    const fr = new THREE.Mesh(wheelGeo, blackMat); fr.position.set(0.7, 0.35, -0.6);
+    const rl = new THREE.Mesh(wheelGeo, blackMat); rl.position.set(-0.7, 0.35, 0.7);
+    const rr = new THREE.Mesh(wheelGeo, blackMat); rr.position.set(0.7, 0.35, 0.7);
+    group.add(fl, fr, rl, rr);
+
+    // 3. ROLL CAGE
+    const postGeo = new THREE.BoxGeometry(0.08, 1.6, 0.08);
+    const p1 = new THREE.Mesh(postGeo, blackMat); p1.position.set(-0.6, 1.6, -0.3);
+    const p2 = new THREE.Mesh(postGeo, blackMat); p2.position.set(0.6, 1.6, -0.3);
+    const p3 = new THREE.Mesh(postGeo, blackMat); p3.position.set(-0.6, 1.6, 0.9);
+    const p4 = new THREE.Mesh(postGeo, blackMat); p4.position.set(0.6, 1.6, 0.9);
+    const roof = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.05, 1.4), blackMat);
+    roof.position.set(0, 2.4, 0.3);
+    group.add(p1, p2, p3, p4, roof);
+
+    // Seat
+    const seatBase = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.1, 0.6), darkGreyMat);
+    seatBase.position.set(0, 0.8, 0.4);
+    const seatBack = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.6, 0.1), darkGreyMat);
+    seatBack.position.set(0, 1.1, 0.7);
+    group.add(seatBase, seatBack);
+
+    // Steering
+    const steeringCol = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.6), blackMat);
+    steeringCol.position.set(0, 1.1, -0.1);
+    steeringCol.rotation.x = -0.5;
+    const steeringWheel = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.03, 8, 16), blackMat);
+    steeringWheel.position.set(0, 1.35, -0.25);
+    steeringWheel.rotation.x = -0.5;
+    group.add(steeringCol, steeringWheel);
+
+    // 4. MAST
+    const mastGeo = new THREE.BoxGeometry(0.1, 2.8, 0.15);
+    const leftMast = new THREE.Mesh(mastGeo, greyMat); leftMast.position.set(-0.4, 1.5, -1.05);
+    const rightMast = new THREE.Mesh(mastGeo, greyMat); rightMast.position.set(0.4, 1.5, -1.05);
+    const mastBar = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.1, 0.1), greyMat); mastBar.position.set(0, 2.8, -1.05);
+    group.add(leftMast, rightMast, mastBar);
+
+    // 5. FORKS
+    const forksGroup = new THREE.Group();
+    forksGroup.position.set(0, 0.3, -1.15); 
+    const carriage = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.4, 0.1), blackMat);
+    forksGroup.add(carriage);
+    const tineGeo = new THREE.BoxGeometry(0.12, 0.05, 1.4);
+    const leftTine = new THREE.Mesh(tineGeo, blackMat); leftTine.position.set(-0.3, -0.15, -0.6);
+    const rightTine = new THREE.Mesh(tineGeo, blackMat); rightTine.position.set(0.3, -0.15, -0.6);
+    forksGroup.add(leftTine, rightTine);
+
+    group.add(forksGroup);
+    group.userData.forksObj = forksGroup; 
     return group;
 }
 
 function attemptToggleDrive() {
     if (isDriving) {
+        // EXIT VEHICLE
         isDriving = false;
-        controls.lock();
         camera.position.x -= 2;
         camera.position.y = 1.6;
         socket.emit('leave-seat');
     } else {
+        // ENTER VEHICLE
         if (forklift && camera.position.distanceTo(forklift.position) < 4) {
             socket.emit('request-drive');
         }
@@ -172,7 +214,6 @@ function attemptToggleDrive() {
 // --- NETWORK EVENTS ---
 
 socket.on('init-game', (data) => {
-    // If scene is ready, load now. If not, save for later.
     if (scene) {
         loadGameWorld(data);
     } else {
@@ -184,7 +225,6 @@ socket.on('driver-status', (data) => {
     currentDriverId = data.driverId;
     if (currentDriverId === socket.id) {
         isDriving = true;
-        controls.unlock(); 
     }
 });
 
@@ -200,7 +240,7 @@ socket.on('update-forklift', (data) => {
 });
 
 socket.on('update-players', (serverPlayers) => {
-    if (!scene) return; // Ignore if game hasn't started
+    if (!scene) return; 
     Object.keys(serverPlayers).forEach(id => {
         if (id !== socket.id && !otherPlayers[id]) {
             const mesh = createPlayerMesh(serverPlayers[id].color);
@@ -234,37 +274,40 @@ function createPlayerMesh(color) {
 
 function animate() {
     requestAnimationFrame(animate);
-
-    // If game hasn't started or controls aren't ready, skip logic
     if (!scene || !forklift) return; 
 
     if (isDriving) {
+        // --- DRIVING MODE ---
         const speed = 10.0 * 0.016;
         const rotSpeed = 2.0 * 0.016;
         let moved = false;
 
+        // INVERTED CONTROLS FOR DRIVING
         if (moveForward) {
-            forklift.position.x -= Math.sin(forklift.rotation.y) * speed;
-            forklift.position.z -= Math.cos(forklift.rotation.y) * speed;
-            moved = true;
-        }
-        if (moveBackward) {
             forklift.position.x += Math.sin(forklift.rotation.y) * speed;
             forklift.position.z += Math.cos(forklift.rotation.y) * speed;
             moved = true;
         }
-        if (moveLeft) { forklift.rotation.y += rotSpeed; moved = true; }
-        if (moveRight) { forklift.rotation.y -= rotSpeed; moved = true; }
+        if (moveBackward) {
+            forklift.position.x -= Math.sin(forklift.rotation.y) * speed;
+            forklift.position.z -= Math.cos(forklift.rotation.y) * speed;
+            moved = true;
+        }
+        // INVERTED TURNING
+        if (moveLeft) { forklift.rotation.y -= rotSpeed; moved = true; }
+        if (moveRight) { forklift.rotation.y += rotSpeed; moved = true; }
 
+        // Forks
         const forks = forklift.userData.forksObj;
         if (forkMovingUp && forks.position.y < 2.5) { forks.position.y += 0.05; moved = true; }
         if (forkMovingDown && forks.position.y > 0.1) { forks.position.y -= 0.05; moved = true; }
 
-        camera.position.copy(forklift.position);
-        camera.position.y += 1.5; 
-        camera.position.x -= Math.sin(forklift.rotation.y) * 0.5; 
-        camera.position.z -= Math.cos(forklift.rotation.y) * 0.5;
-        camera.rotation.y = forklift.rotation.y + Math.PI;
+        // CAMERA (Seat Logic + Free Look)
+        // Offset Y=1.8 (head height), Z=0.3 (slightly back from wheel)
+        const seatOffset = new THREE.Vector3(0, 1.8, 0.3); 
+        camera.position.copy(forklift.position).add(seatOffset);
+        
+        // Note: We do NOT touch camera.rotation here, allowing free mouse look.
 
         if (moved) {
             socket.emit('move-forklift', {
@@ -276,6 +319,7 @@ function animate() {
         }
 
     } else if (controls.isLocked) {
+        // --- WALKING MODE ---
         let delta = 0.016;
         let speed = isShifting ? 150.0 : 400.0;
         let targetHeight = isShifting ? 1.2 : 1.6;
@@ -296,7 +340,7 @@ function animate() {
         controls.moveForward(-velocity.z * delta);
         camera.position.y += (velocity.y * delta);
 
-        // COLLISION (Player vs Forklift)
+        // Collision Check
         const dist = camera.position.distanceTo(forklift.position);
         if (dist < 2.5) {
             const pushDir = camera.position.clone().sub(forklift.position).normalize();
