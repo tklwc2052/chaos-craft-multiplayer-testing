@@ -9,25 +9,33 @@ app.use(express.static(path.join(__dirname, 'public')));
 let players = {};
 let trees = [];
 
-// Generate 30 trees
-for (let i = 0; i < 30; i++) {
+// Generate 40 unique trees with varying scales
+for (let i = 0; i < 40; i++) {
     trees.push({
         id: i,
-        x: Math.random() * 80 - 40,
-        z: Math.random() * 80 - 40,
-        radius: 0.6 // The "hitbox" size of the trunk
+        x: Math.random() * 100 - 50,
+        z: Math.random() * 100 - 50,
+        height: 1.5 + Math.random() * 2, // Random tree height
+        radius: 0.6
     });
 }
 
 io.on('connection', (socket) => {
-    players[socket.id] = { x: 0, y: 1.6, z: 0, ry: 0, username: "Guest", color: Math.floor(Math.random()*16777215).toString(16) };
-
-    // 1. Send trees immediately on connect
-    socket.emit('init-trees', trees);
+    // Initial data structure
+    players[socket.id] = { 
+        x: 0, y: 1.6, z: 0, ry: 0, 
+        username: "Guest", 
+        color: Math.floor(Math.random()*16777215).toString(16) 
+    };
 
     socket.on('join', (data) => {
         if(players[socket.id]) {
             players[socket.id].username = data.username || "Player";
+            
+            // Send trees ONLY after join is confirmed
+            socket.emit('init-trees', trees);
+            
+            // Sync all players
             io.emit('update-players', players);
         }
     });
