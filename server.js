@@ -8,37 +8,28 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 let players = {};
 let trees = [];
-let worldTime = 0;
+let forkliftPos = { x: -10, y: 0, z: -10, ry: 0, forkY: 0.5 };
 
-// Initial forest generation
+// Forest Setup
 for (let i = 0; i < 40; i++) {
     trees.push({
-        id: "tree_" + i, 
-        x: Math.random() * 100 - 50, 
-        z: Math.random() * 100 - 50,
-        height: 1.5 + Math.random() * 2, 
-        isGrown: true, 
-        createdAt: Date.now() - 60000 
+        id: "tree_" + i, x: Math.random() * 100 - 50, z: Math.random() * 100 - 50,
+        height: 1.5 + Math.random() * 2, isGrown: true, createdAt: Date.now() - 60000, health: 3
     });
 }
-
-// Day/Night cycle
-setInterval(() => {
-    worldTime++;
-    if (worldTime >= 1200) worldTime = 0;
-    io.emit('time-sync', worldTime);
-}, 1000);
 
 io.on('connection', (socket) => {
     socket.on('join', (data) => {
         players[socket.id] = { 
-            x: 0, y: 1.6, z: 0, ry: 0, 
+            id: socket.id, x: 0, y: 1.6, z: 0, ry: 0, 
             username: data.username || "Guest", 
-            color: Math.floor(Math.random()*16777215).toString(16) 
+            color: Math.floor(Math.random()*16777215).toString(16),
+            coins: 100 
         };
         socket.emit('init-trees', trees);
         socket.emit('current-players', players);
-        socket.broadcast.emit('new-player', { id: socket.id, info: players[socket.id] });
+        socket.emit('init-forklift', forkliftPos);
+        io.emit('leaderboard-update', Object.values(players));
     });
 
     socket.on('move', (data) => {
@@ -48,33 +39,37 @@ io.on('connection', (socket) => {
         }
     });
 
+    socket.on('update-forklift', (data) => {
+        forkliftPos = data;
+        socket.broadcast.emit('forklift-moved', forkliftPos);
+    });
+
     socket.on('click-tree', (id) => {
-        const index = trees.findIndex(t => t.id == id);
+        const index = trees.findIndex(t => String(t.id) === String(id));
         if (index !== -1 && trees[index].isGrown) {
-            trees.splice(index, 1);
-            io.emit('tree-removed', id);
-            socket.emit('gain-log');
+            trees[index].health--;
+            if (trees[index].health <= 0) {
+                trees.splice(index, 1);
+                io.emit('tree-removed', id);
+                socket.emit('gain-log');
+            } else {
+                io.emit('tree-damaged', { id: id, health: trees[index].health });
+            }
         }
     });
 
     socket.on('place-tree', (pos) => {
-        const newTree = { 
-            id: "tree_" + Date.now(), 
-            x: pos.x, z: pos.z, 
-            height: 1.5 + Math.random() * 2, 
-            isGrown: false, createdAt: Date.now() 
-        };
+        const newTree = { id: "tree_" + Date.now(), x: pos.x, z: pos.z, height: 1.5 + Math.random() * 2, isGrown: false, createdAt: Date.now(), health: 3 };
         trees.push(newTree);
         io.emit('tree-added', newTree);
     });
 
-    socket.on('drop-log', () => {
-        io.emit('animate-log-belt'); 
-        setTimeout(() => { socket.emit('lumber-ready'); }, 10000);
-    });
-
     socket.on('sell-lumber', () => {
-        socket.emit('payment', 25); // Challenging economy
+        if(players[socket.id]) {
+            players[socket.id].coins += 25;
+            socket.emit('payment', 25);
+            io.emit('leaderboard-update', Object.values(players));
+        }
     });
 
     socket.on('disconnect', () => {
@@ -83,4 +78,4 @@ io.on('connection', (socket) => {
     });
 });
 
-http.listen(3000, () => console.log('Server running on port 3000'));
+http.listen(3000, () => console.log('Logistics Sim Running on Port 3000'));
