@@ -1,103 +1,39 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>tree online</title>
+    <title>Hardcore Lumber Mill</title>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Courier New', Courier, monospace; }
-        
-        /* Login Screen */
-        #login {
-            position: absolute; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.8); color: white;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            z-index: 10;
-        }
-        input { padding: 10px; font-size: 18px; margin-bottom: 10px; }
-        button#startBtn { padding: 10px 20px; font-size: 18px; cursor: pointer; background: #228B22; color: white; border: none; }
-
-        /* Game UI */
-        #ui {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none; /* Allows clicking through to the game */
-            display: none;
-        }
-
-        /* Stats Panel */
-        .stats {
-            position: absolute; top: 20px; left: 20px;
-            color: white; background: rgba(0,0,0,0.7);
-            padding: 15px; border-radius: 5px; border: 1px solid #555;
-            pointer-events: auto;
-        }
-        .stats span { color: #00ff00; font-weight: bold; }
-
-        /* Crosshair */
-        #crosshair {
-            position: absolute; top: 50%; left: 50%;
-            width: 20px; height: 20px;
-            border: 2px solid white; border-radius: 50%;
-            transform: translate(-50%, -50%);
-            display: none; pointer-events: none;
-        }
-
-        /* Hotbar */
-        .hotbar {
-            position: absolute; bottom: 30px; left: 50%;
-            transform: translateX(-50%);
-            display: flex; gap: 10px; pointer-events: auto;
-        }
-        .slot {
-            width: 65px; height: 65px;
-            background: rgba(0,0,0,0.6);
-            border: 2px solid #fff; color: white;
-            display: flex; flex-direction: column;
-            align-items: center; justify-content: center;
-            font-size: 24px; position: relative;
-        }
-        .slot span { font-size: 10px; position: absolute; top: 2px; left: 5px; }
-        .slot.active { border-color: #ffff00; background: rgba(80, 80, 0, 0.8); box-shadow: 0 0 15px #ffff00; }
-
-        /* Shop Button */
-        .shop-btn {
-            height: 65px; padding: 0 20px;
-            background: #228B22; color: white;
-            border: 2px solid #fff; cursor: pointer;
-            font-weight: bold; font-family: inherit;
-        }
-        .shop-btn:hover { background: #2eb82e; }
-
+        body { margin: 0; overflow: hidden; font-family: monospace; background: #000; }
+        #login { position: absolute; width:100%; height:100%; background:rgba(0,0,0,0.8); color:white; display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:10; }
+        #ui { position: absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; display:none; }
+        .stats { position:absolute; top:20px; left:20px; color:white; background:rgba(0,0,0,0.7); padding:15px; pointer-events:auto; }
+        .hotbar { position:absolute; bottom:30px; left:50%; transform:translateX(-50%); display:flex; gap:10px; pointer-events:auto; }
+        .slot { width:60px; height:60px; background:rgba(0,0,0,0.6); border:2px solid #fff; color:white; display:flex; align-items:center; justify-content:center; font-size:24px; }
+        .slot.active { border-color: yellow; background: rgba(100,100,0,0.5); }
+        #crosshair { position:absolute; top:50%; left:50%; width:10px; height:10px; border:1px solid white; transform:translate(-50%,-50%); border-radius:50%; pointer-events:none; display:none; }
     </style>
 </head>
 <body>
-
     <div id="login">
         <h1>LUMBER CHAOS</h1>
-        <input type="text" id="usernameInput" placeholder="Enter Name..." maxlength="12">
-        <button id="startBtn">ENTER WORLD</button>
+        <input type="text" id="usernameInput" placeholder="Name..." maxlength="10"><br>
+        <button id="startBtn" style="padding:10px 20px; cursor:pointer;">START</button>
     </div>
-
     <div id="crosshair"></div>
-
     <div id="ui">
         <div class="stats">
-            NAME: <span id="userNameDisplay">Guest</span><br>
             CASH: $<span id="coinDisplay">100</span><br>
             SEEDS: <span id="saplingDisplay">0</span><br>
             LOGS: <span id="logDisplay">0</span><br>
-            <hr>
-            <div style="font-size: 12px; color: #aaa;">MILL READY: <span id="lumberReadyDisplay" style="color:#00ff00">0</span></div>
+            READY: <span id="lumberReadyDisplay" style="color:#0f0">0</span>
         </div>
-
         <div class="hotbar">
-            <div id="slot1" class="slot active"><span>1</span>🪓</div>
-            <div id="slot2" class="slot"><span>2</span>🌱</div>
-            <div id="slot3" class="slot"><span>3</span>🪵</div>
-            <button class="shop-btn" onclick="buySapling()">BUY SEED ($20)</button>
+            <div id="slot1" class="slot active">🪓</div>
+            <div id="slot2" class="slot">🌱</div>
+            <div id="slot3" class="slot">🪵</div>
+            <button onclick="buySapling()" style="padding:0 10px; cursor:pointer; background:green; color:white; border:none;">BUY SEED ($20)</button>
         </div>
     </div>
-
     <script src="/socket.io/socket.io.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/js/controls/PointerLockControls.js"></script>
