@@ -4,7 +4,6 @@ let moveForward = false, moveBackward = false, moveLeft = false, moveRight = fal
 let velocity = new THREE.Vector3(), direction = new THREE.Vector3();
 let otherPlayers = {}, treeMeshes = {}, coins = 0;
 
-// SNAPPY PHYSICS TUNING
 const GRAVITY = 24.0; 
 const JUMP_FORCE = 10.0; 
 let canJump = false;
@@ -30,10 +29,7 @@ function init3D() {
     document.body.appendChild(renderer.domElement);
 
     controls = new THREE.PointerLockControls(camera, document.body);
-    
-    // Force spawn view alignment
     camera.position.set(0, 1.6, 0);
-    camera.rotation.set(0, 0, 0);
     
     document.addEventListener('click', () => {
         controls.isLocked ? checkTreeClick() : controls.lock();
@@ -52,10 +48,7 @@ function init3D() {
         if(e.code==='KeyA') moveLeft=true; 
         if(e.code==='KeyD') moveRight=true;
         if(e.shiftKey) isShifting = true;
-        if(e.code==='Space' && canJump) { 
-            velocity.y = JUMP_FORCE; // Reset velocity to jump force for consistency
-            canJump = false; 
-        }
+        if(e.code==='Space' && canJump) { velocity.y = JUMP_FORCE; canJump = false; }
     });
     window.addEventListener('keyup', (e) => {
         if(e.code==='KeyW') moveForward=false; 
@@ -82,14 +75,20 @@ function createPlayerMesh(color) {
     return group;
 }
 
-// Heartbeat Loop (20Hz)
+// HEARTBEAT LOOP FIX: Rotation check
 setInterval(() => {
     if (controls && controls.isLocked) {
-        if (camera.position.x !== lastSentPos.x || camera.position.y !== lastSentPos.y || camera.position.z !== lastSentPos.z || camera.rotation.y !== lastSentPos.ry) {
+        // We use camera.rotation.y, but ensure it's checked against the last sent value accurately
+        let currentRY = camera.rotation.y;
+
+        if (camera.position.x !== lastSentPos.x || camera.position.y !== lastSentPos.y || camera.position.z !== lastSentPos.z || currentRY !== lastSentPos.ry) {
             socket.emit('move', { 
-                x: camera.position.x, y: camera.position.y, z: camera.position.z, ry: camera.rotation.y 
+                x: camera.position.x, 
+                y: camera.position.y, 
+                z: camera.position.z, 
+                ry: currentRY 
             });
-            lastSentPos = { x: camera.position.x, y: camera.position.y, z: camera.position.z, ry: camera.rotation.y };
+            lastSentPos = { x: camera.position.x, y: camera.position.y, z: camera.position.z, ry: currentRY };
         }
     }
 }, 50);
@@ -126,6 +125,7 @@ socket.on('update-players', (serverPlayers) => {
 socket.on('player-moved', (data) => { 
     if (otherPlayers[data.id]) {
         otherPlayers[data.id].position.set(data.pos.x, data.pos.y - 0.8, data.pos.z);
+        // Direct rotation sync
         otherPlayers[data.id].rotation.y = data.pos.ry;
     }
 });
@@ -158,7 +158,6 @@ function animate() {
         let targetHeight = isShifting ? 1.2 : 1.6;
 
         camera.position.y += (targetHeight - camera.position.y) * 0.2; 
-
         velocity.x -= velocity.x * 10.0 * delta;
         velocity.z -= velocity.z * 10.0 * delta;
         velocity.y -= GRAVITY * delta;
