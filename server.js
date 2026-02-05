@@ -2,7 +2,7 @@ const express = require('express');
 const path = require('path');
 const app = express();
 const http = require('http').createServer(app);
-const io = require('socket.io')(http, { cors: { origin: "*" } });
+const io = require('socket.io')(http);
 
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -10,7 +10,7 @@ let players = {};
 let trees = [];
 let forkliftPos = { x: -10, y: 0, z: -10, ry: 0, forkY: 0.5 };
 
-// Forest Setup
+// Initial Forest
 for (let i = 0; i < 40; i++) {
     trees.push({
         id: "tree_" + i, x: Math.random() * 100 - 50, z: Math.random() * 100 - 50,
@@ -21,7 +21,8 @@ for (let i = 0; i < 40; i++) {
 io.on('connection', (socket) => {
     socket.on('join', (data) => {
         players[socket.id] = { 
-            id: socket.id, x: 0, y: 1.6, z: 0, ry: 0, 
+            id: socket.id, 
+            x: 0, y: 5.0, z: 0, ry: 0, // FIX: Start at Y=5 to avoid floor trap
             username: data.username || "Guest", 
             color: Math.floor(Math.random()*16777215).toString(16),
             coins: 100 
@@ -58,12 +59,6 @@ io.on('connection', (socket) => {
         }
     });
 
-    socket.on('place-tree', (pos) => {
-        const newTree = { id: "tree_" + Date.now(), x: pos.x, z: pos.z, height: 1.5 + Math.random() * 2, isGrown: false, createdAt: Date.now(), health: 3 };
-        trees.push(newTree);
-        io.emit('tree-added', newTree);
-    });
-
     socket.on('sell-lumber', () => {
         if(players[socket.id]) {
             players[socket.id].coins += 25;
@@ -78,4 +73,4 @@ io.on('connection', (socket) => {
     });
 });
 
-http.listen(3000, () => console.log('Logistics Sim Running on Port 3000'));
+http.listen(3000, () => console.log('Server started on port 3000'));
