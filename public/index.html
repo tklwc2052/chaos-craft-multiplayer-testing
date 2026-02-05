@@ -1,34 +1,106 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Cha0sCraft Multiplayer</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>tree online</title>
     <style>
-        body { margin: 0; overflow: hidden; font-family: 'Courier New', Courier, monospace; background: #000; }
-        #ui { position: absolute; top: 10px; left: 10px; color: #00FF00; background: rgba(0,0,0,0.8); padding: 15px; border-radius: 8px; pointer-events: none; display: none; border: 2px solid #567d46; }
-        #login { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #87ceeb; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 100; }
-        input { padding: 15px; font-size: 20px; border: 3px solid #567d46; border-radius: 5px; margin-bottom: 10px; }
-        button { padding: 15px 30px; font-size: 22px; cursor: pointer; background: #567d46; color: white; border: none; border-radius: 5px; box-shadow: 0 4px #2e4225; }
-        button:active { box-shadow: 0 2px #2e4225; transform: translateY(2px); }
-        #crosshair { position: absolute; top: 50%; left: 50%; width: 8px; height: 8px; background: white; border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; border: 2px solid black; display: none; }
+        body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Courier New', Courier, monospace; }
+        
+        /* Login Screen */
+        #login {
+            position: absolute; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); color: white;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 10;
+        }
+        input { padding: 10px; font-size: 18px; margin-bottom: 10px; }
+        button#startBtn { padding: 10px 20px; font-size: 18px; cursor: pointer; background: #228B22; color: white; border: none; }
+
+        /* Game UI */
+        #ui {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; /* Allows clicking through to the game */
+            display: none;
+        }
+
+        /* Stats Panel */
+        .stats {
+            position: absolute; top: 20px; left: 20px;
+            color: white; background: rgba(0,0,0,0.7);
+            padding: 15px; border-radius: 5px; border: 1px solid #555;
+            pointer-events: auto;
+        }
+        .stats span { color: #00ff00; font-weight: bold; }
+
+        /* Crosshair */
+        #crosshair {
+            position: absolute; top: 50%; left: 50%;
+            width: 20px; height: 20px;
+            border: 2px solid white; border-radius: 50%;
+            transform: translate(-50%, -50%);
+            display: none; pointer-events: none;
+        }
+
+        /* Hotbar */
+        .hotbar {
+            position: absolute; bottom: 30px; left: 50%;
+            transform: translateX(-50%);
+            display: flex; gap: 10px; pointer-events: auto;
+        }
+        .slot {
+            width: 65px; height: 65px;
+            background: rgba(0,0,0,0.6);
+            border: 2px solid #fff; color: white;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            font-size: 24px; position: relative;
+        }
+        .slot span { font-size: 10px; position: absolute; top: 2px; left: 5px; }
+        .slot.active { border-color: #ffff00; background: rgba(80, 80, 0, 0.8); box-shadow: 0 0 15px #ffff00; }
+
+        /* Shop Button */
+        .shop-btn {
+            height: 65px; padding: 0 20px;
+            background: #228B22; color: white;
+            border: 2px solid #fff; cursor: pointer;
+            font-weight: bold; font-family: inherit;
+        }
+        .shop-btn:hover { background: #2eb82e; }
+
     </style>
 </head>
 <body>
+
     <div id="login">
-        <h1 style="color: white; text-shadow: 4px 4px black; font-size: 60px; margin-bottom: 20px;">CHA0SCRAFT</h1>
-        <input type="text" id="usernameInput" placeholder="Username" maxlength="12">
-        <button id="startBtn">ENTER CHAOS</button>
+        <h1>LUMBER CHAOS</h1>
+        <input type="text" id="usernameInput" placeholder="Enter Name..." maxlength="12">
+        <button id="startBtn">ENTER WORLD</button>
     </div>
 
     <div id="crosshair"></div>
+
     <div id="ui">
-        PLAYER: <span id="userNameDisplay">...</span><br>
-        COINS: $<span id="coinDisplay">0</span><br><br>
-        <small>WASD: Walk | SHIFT: Sneak<br>CLICK: Mine Trees</small>
+        <div class="stats">
+            NAME: <span id="userNameDisplay">Guest</span><br>
+            CASH: $<span id="coinDisplay">100</span><br>
+            SEEDS: <span id="saplingDisplay">0</span><br>
+            LOGS: <span id="logDisplay">0</span><br>
+            <hr>
+            <div style="font-size: 12px; color: #aaa;">MILL READY: <span id="lumberReadyDisplay" style="color:#00ff00">0</span></div>
+        </div>
+
+        <div class="hotbar">
+            <div id="slot1" class="slot active"><span>1</span>🪓</div>
+            <div id="slot2" class="slot"><span>2</span>🌱</div>
+            <div id="slot3" class="slot"><span>3</span>🪵</div>
+            <button class="shop-btn" onclick="buySapling()">BUY SEED ($20)</button>
+        </div>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/PointerLockControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/js/controls/PointerLockControls.js"></script>
     <script src="game.js"></script>
 </body>
 </html>
