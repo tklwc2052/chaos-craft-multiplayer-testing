@@ -4,7 +4,7 @@ let moveForward = false, moveBackward = false, moveLeft = false, moveRight = fal
 let velocity = new THREE.Vector3(), direction = new THREE.Vector3();
 let otherPlayers = {}, treeMeshes = {}, coins = 0;
 
-// LOGIN & START LOGIC
+// --- LOGIN & START LOGIC ---
 document.getElementById('startBtn').addEventListener('click', () => {
     const name = document.getElementById('usernameInput').value || "Player";
     document.getElementById('userNameDisplay').innerText = name;
@@ -17,7 +17,7 @@ document.getElementById('startBtn').addEventListener('click', () => {
 
 function init3D() {
     scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x87ceeb);
+    scene.background = new THREE.Color(0x87ceeb); // Sky blue
     camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
     
     renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -64,7 +64,7 @@ function init3D() {
     animate();
 }
 
-// PLAYER VISUALS (2 SQUARE EYES)
+// --- PLAYER VISUALS (2 PURE BLACK SQUARE EYES) ---
 function createPlayerMesh(color) {
     const group = new THREE.Group();
     
@@ -75,26 +75,22 @@ function createPlayerMesh(color) {
     );
     group.add(body);
 
-    const eyeMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
-    const pupilMat = new THREE.MeshStandardMaterial({ color: 0x000000 });
+    // Pure Black Eyes
+    const eyeMat = new THREE.MeshBasicMaterial({ color: 0x000000 }); 
 
     // Left Eye
-    const leftEye = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.1), eyeMat);
-    leftEye.position.set(-0.25, 0.6, -0.51);
-    const leftPupil = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.05), pupilMat);
-    leftPupil.position.set(-0.25, 0.6, -0.54);
+    const leftEye = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.05), eyeMat);
+    leftEye.position.set(-0.25, 0.6, -0.51); 
 
     // Right Eye
-    const rightEye = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.1), eyeMat);
-    rightEye.position.set(0.25, 0.6, -0.51);
-    const rightPupil = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.05), pupilMat);
-    rightPupil.position.set(0.25, 0.6, -0.54);
+    const rightEye = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.05), eyeMat);
+    rightEye.position.set(0.25, 0.6, -0.51); 
 
-    group.add(leftEye, leftPupil, rightEye, rightPupil);
+    group.add(leftEye, rightEye);
     return group;
 }
 
-// MULTIPLAYER SYNC
+// --- MULTIPLAYER SYNC ---
 socket.on('init-trees', (serverTrees) => {
     serverTrees.forEach(t => {
         const group = new THREE.Group();
@@ -114,7 +110,6 @@ function checkTreeClick() {
     raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
     const intersects = raycaster.intersectObjects(Object.values(treeMeshes), true);
     if (intersects.length > 0) {
-        // Traverse up to find the group containing userData
         let obj = intersects[0].object;
         while (obj.parent && obj.userData.treeId === undefined) {
             obj = obj.parent;
@@ -158,7 +153,7 @@ socket.on('player-left', (id) => {
     } 
 });
 
-// GAME LOOP
+// --- GAME LOOP ---
 function animate() {
     requestAnimationFrame(animate);
     if (controls.isLocked) {
