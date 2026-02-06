@@ -51,7 +51,6 @@ function init3D() {
         controls.lock();
     });
 
-    // LIGHTING
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
     scene.add(ambientLight);
     
@@ -62,27 +61,22 @@ function init3D() {
     dirLight.shadow.mapSize.height = 2048;
     scene.add(dirLight);
     
-    // GROUND
     const ground = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.MeshStandardMaterial({color: 0x333333, roughness: 0.8}));
     ground.rotation.x = -Math.PI / 2;
     ground.receiveShadow = true;
     scene.add(ground);
 
-    // --- BUILD THE V4 FORKLIFT ---
+    // --- BUILD THE V7 FORKLIFT ---
     buildForklift();
 
-    // Inputs
     window.addEventListener('keydown', (e) => {
         if(e.code==='KeyW') moveForward=true; 
-        if(e.code==='KeyS') moveBackward=false; // Typo fix
         if(e.code==='KeyS') moveBackward=true;
         if(e.code==='KeyA') moveLeft=true; 
         if(e.code==='KeyD') moveRight=true;
         if(e.shiftKey) isShifting = true;
         if(e.code==='Space' && !isDriving && canJump) { velocity.y = JUMP_FORCE; canJump = false; }
-        
         if(e.code === 'KeyE') attemptToggleDrive();
-        
         if(e.code === 'KeyR') forkMovingUp = true;
         if(e.code === 'KeyF') forkMovingDown = true;
     });
@@ -100,142 +94,143 @@ function init3D() {
     animate();
 }
 
-// --- 🏗️ THE SCULPTED BUILDER (V4) ---
+// --- 🏗️ THE HYBRID BUILDER (V7) ---
 function buildForklift() {
     forklift = new THREE.Group();
     
     // -- COLORS --
-    const COLOR_BODY = 0xE6B800; // Caterpillar Yellow
+    const COLOR_BODY = 0xE6B800; 
     const COLOR_DARK = 0x222222; 
-    const COLOR_STEEL = 0x888899; 
-
+    const COLOR_IRON = 0x333333; 
+    const COLOR_STEEL = 0xAAAAAA; 
+    const COLOR_CAGE = 0x1a1a1a; 
+    const COLOR_CHAIN = 0x111111;
     const matBody = new THREE.MeshStandardMaterial({ color: COLOR_BODY, roughness: 0.3 });
     const matDark = new THREE.MeshStandardMaterial({ color: COLOR_DARK, roughness: 0.8 });
+    const matIron = new THREE.MeshStandardMaterial({ color: COLOR_IRON, roughness: 0.7, metalness: 0.4 });
     const matSteel = new THREE.MeshStandardMaterial({ color: COLOR_STEEL, roughness: 0.3, metalness: 0.6 });
+    const matCage = new THREE.MeshStandardMaterial({ color: COLOR_CAGE, roughness: 0.5 });
+    const matChain = new THREE.MeshStandardMaterial({ color: COLOR_CHAIN, roughness: 0.9 });
     const matTank = new THREE.MeshStandardMaterial({ color: 0xEEEEEE });
 
     const chassisGroup = new THREE.Group();
     
     // 1. REAR SECTION (Engine Block)
     const rearBlock = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.0, 0.8), matBody);
-    rearBlock.position.set(0, 1.0, 1.0); 
-    rearBlock.castShadow = true;
-    chassisGroup.add(rearBlock);
+    rearBlock.position.set(0, 1.0, 1.0); rearBlock.castShadow = true; chassisGroup.add(rearBlock);
 
-    // --- THE ROUNDED CORNER BACK ---
-    // Instead of a half-circle, we use a box + 2 vertical cylinders at the corners
-    const cwBox = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.0, 0.5), matBody);
-    cwBox.position.set(0, 1.0, 1.55);
-    chassisGroup.add(cwBox);
-
+    // Rounded Corners Back
+    const cwBox = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.0, 0.5), matBody); cwBox.position.set(0, 1.0, 1.55); chassisGroup.add(cwBox);
     const cornerGeo = new THREE.CylinderGeometry(0.25, 0.25, 1.0, 16);
-    // Left Corner
-    const cL = new THREE.Mesh(cornerGeo, matBody);
-    cL.position.set(-0.4, 1.0, 1.55);
-    chassisGroup.add(cL);
-    // Right Corner
-    const cR = new THREE.Mesh(cornerGeo, matBody);
-    cR.position.set(0.4, 1.0, 1.55);
-    chassisGroup.add(cR);
-    // -------------------------------
+    const cL = new THREE.Mesh(cornerGeo, matBody); cL.position.set(-0.4, 1.0, 1.55); chassisGroup.add(cL);
+    const cR = new THREE.Mesh(cornerGeo, matBody); cR.position.set(0.4, 1.0, 1.55); chassisGroup.add(cR);
 
-    // 2. FRONT SECTION (Short Dash)
+    // 2. FRONT SECTION (Dash)
     const frontCowling = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.6, 1.2), matBody);
-    frontCowling.position.set(0, 0.8, -0.1); 
-    frontCowling.castShadow = true;
-    chassisGroup.add(frontCowling);
+    frontCowling.position.set(0, 0.8, -0.1); frontCowling.castShadow = true; chassisGroup.add(frontCowling);
 
-    // 3. FENDERS (Wheel Arches)
-    const fL = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.1, 0.8), matBody);
-    fL.position.set(-0.55, 0.8, -0.6); 
-    chassisGroup.add(fL);
+    // --- 3. FENDERS (Hybrid Style) ---
+    
+    // FRONT FENDERS: Curved Arches (Half-Cylinders)
+    const archGeo = new THREE.CylinderGeometry(0.5, 0.5, 0.3, 32, 1, false, 0, Math.PI);
+    
+    const fFL = new THREE.Mesh(archGeo, matBody); 
+    fFL.rotation.z = Math.PI / 2; fFL.rotation.x = Math.PI; 
+    fFL.position.set(-0.55, 0.4, -0.6); 
+    chassisGroup.add(fFL);
 
-    const fR = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.1, 0.8), matBody);
-    fR.position.set(0.55, 0.8, -0.6); 
-    chassisGroup.add(fR);
+    const fFR = new THREE.Mesh(archGeo, matBody); 
+    fFR.rotation.z = Math.PI / 2; fFR.rotation.x = Math.PI; 
+    fFR.position.set(0.55, 0.4, -0.6); 
+    chassisGroup.add(fFR);
 
-    // 4. UNDERCARRIAGE (Narrower to fit wheels)
-    const base = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.4, 2.5), matDark);
-    base.position.set(0, 0.4, 0.5);
-    chassisGroup.add(base);
+    // REAR FENDERS: Flat Boxes (Blocky Industrial Look)
+    // Positioned over the rear wheels
+    const boxFenderGeo = new THREE.BoxGeometry(0.3, 0.1, 0.8);
+    
+    const fRL = new THREE.Mesh(boxFenderGeo, matBody);
+    fRL.position.set(-0.55, 0.8, 1.2); // Sits flat above rear wheel
+    chassisGroup.add(fRL);
 
+    const fRR = new THREE.Mesh(boxFenderGeo, matBody);
+    fRR.position.set(0.55, 0.8, 1.2); // Sits flat above rear wheel
+    chassisGroup.add(fRR);
+
+    // ---------------------------------
+
+    // 4. UNDERCARRIAGE
+    const base = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.4, 2.5), matDark); base.position.set(0, 0.4, 0.5); chassisGroup.add(base);
     forklift.add(chassisGroup);
 
     // 5. PROPANE TANK
     const tank = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.8, 16), matTank);
-    tank.rotation.z = Math.PI / 2;
-    tank.position.set(0, 1.6, 1.4);
-    forklift.add(tank);
+    tank.rotation.z = Math.PI / 2; tank.position.set(0, 1.6, 1.4); forklift.add(tank);
 
-    // 6. WHEELS (Tucked In & Scaled)
-    // Front Wheels (Large)
-    const wheelGeoFront = new THREE.CylinderGeometry(0.4, 0.4, 0.25, 24);
-    wheelGeoFront.rotateZ(Math.PI / 2);
+    // 6. WHEELS
+    const wheelGeoFront = new THREE.CylinderGeometry(0.4, 0.4, 0.25, 24); wheelGeoFront.rotateZ(Math.PI / 2);
+    const wheelGeoRear = new THREE.CylinderGeometry(0.28, 0.28, 0.25, 24); wheelGeoRear.rotateZ(Math.PI / 2);
     
-    // Rear Wheels (Small)
-    const wheelGeoRear = new THREE.CylinderGeometry(0.28, 0.28, 0.25, 24);
-    wheelGeoRear.rotateZ(Math.PI / 2);
-    
-    // Front - Position X is 0.55 (Tucked)
     const wFL = new THREE.Mesh(wheelGeoFront, matDark); wFL.position.set(-0.55, 0.4, -0.6); forklift.add(wFL);
     const wFR = new THREE.Mesh(wheelGeoFront, matDark); wFR.position.set(0.55, 0.4, -0.6); forklift.add(wFR);
-    
-    // Rear - Position X is 0.55 (Tucked), Y is lower due to size
     const wRL = new THREE.Mesh(wheelGeoRear, matDark); wRL.position.set(-0.55, 0.28, 1.2); forklift.add(wRL);
     const wRR = new THREE.Mesh(wheelGeoRear, matDark); wRR.position.set(0.55, 0.28, 1.2); forklift.add(wRR);
 
-    // 7. ROLL CAGE & ROOF
-    const cageGeo = new THREE.CylinderGeometry(0.04, 0.04, 2.2, 8);
-    // Front posts
-    const cFL = new THREE.Mesh(cageGeo, matDark); cFL.position.set(-0.50, 2.0, -0.4); forklift.add(cFL);
-    const cFR = new THREE.Mesh(cageGeo, matDark); cFR.position.set(0.50, 2.0, -0.4); forklift.add(cFR);
-    // Rear posts
-    const cRL = new THREE.Mesh(cageGeo, matDark); cRL.position.set(-0.50, 2.0, 1.0); forklift.add(cRL);
-    const cRR = new THREE.Mesh(cageGeo, matDark); cRR.position.set(0.50, 2.0, 1.0); forklift.add(cRR);
-
-    const roof = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.05, 1.6), matDark);
-    roof.position.set(0, 3.1, 0.3);
-    forklift.add(roof);
+    // 7. CAGE
+    const cageGroup = new THREE.Group();
+    const pipeGeo = new THREE.CylinderGeometry(0.04, 0.04, 2.2, 12);
+    const pipeSideGeo = new THREE.CylinderGeometry(0.04, 0.04, 1.5, 12);
+    const pFL = new THREE.Mesh(pipeGeo, matCage); pFL.position.set(-0.50, 2.0, -0.4); cageGroup.add(pFL);
+    const pFR = new THREE.Mesh(pipeGeo, matCage); pFR.position.set(0.50, 2.0, -0.4); cageGroup.add(pFR);
+    const pRL = new THREE.Mesh(pipeGeo, matCage); pRL.position.set(-0.50, 2.0, 1.0); pRL.rotation.x = -0.1; cageGroup.add(pRL);
+    const pRR = new THREE.Mesh(pipeGeo, matCage); pRR.position.set(0.50, 2.0, 1.0); pRR.rotation.x = -0.1; cageGroup.add(pRR);
+    const rL = new THREE.Mesh(pipeSideGeo, matCage); rL.rotation.x = Math.PI/2; rL.position.set(-0.50, 3.1, 0.3); cageGroup.add(rL);
+    const rR = new THREE.Mesh(pipeSideGeo, matCage); rR.rotation.x = Math.PI/2; rR.position.set(0.50, 3.1, 0.3); cageGroup.add(rR);
+    
+    const slatGeo = new THREE.BoxGeometry(1.0, 0.02, 0.15);
+    for(let i=0; i<5; i++) {
+        const slat = new THREE.Mesh(slatGeo, matCage); slat.position.set(0, 3.12, -0.2 + (i * 0.25)); slat.rotation.x = 0.2; cageGroup.add(slat);
+    }
+    const braceGeo = new THREE.CylinderGeometry(0.03, 0.03, 1.6, 8);
+    const b1 = new THREE.Mesh(braceGeo, matCage); b1.position.set(0, 2.2, 1.05); b1.rotation.z = 0.4; b1.rotation.x = -0.1; cageGroup.add(b1);
+    const b2 = new THREE.Mesh(braceGeo, matCage); b2.position.set(0, 2.2, 1.05); b2.rotation.z = -0.4; b2.rotation.x = -0.1; cageGroup.add(b2);
+    forklift.add(cageGroup);
 
     // 8. INTERIOR
-    const seat = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.1, 0.5), new THREE.MeshStandardMaterial({color: 0x111111}));
-    seat.position.set(0, 1.1, 0.4);
-    forklift.add(seat);
-    
-    const steering = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.6), matDark);
-    steering.position.set(0, 1.5, -0.3);
-    steering.rotation.x = 0.5;
-    forklift.add(steering);
-    const wheel = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.03, 8, 16), matDark);
-    wheel.position.set(0, 1.8, -0.45);
-    wheel.rotation.x = 0.5;
-    forklift.add(wheel);
+    const seat = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.1, 0.5), new THREE.MeshStandardMaterial({color: 0x111111})); seat.position.set(0, 1.1, 0.4); forklift.add(seat);
+    const steering = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.6), matDark); steering.position.set(0, 1.5, -0.3); steering.rotation.x = 0.5; forklift.add(steering);
+    const wheel = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.03, 8, 16), matDark); wheel.position.set(0, 1.8, -0.45); wheel.rotation.x = 0.5; forklift.add(wheel);
 
+    // 9. MAST & LIFT
+    const mastGroup = new THREE.Group();
+    const mastGeo = new THREE.BoxGeometry(0.1, 3.5, 0.15);
+    const mL = new THREE.Mesh(mastGeo, matSteel); mL.position.set(-0.35, 2.0, -1.0); mastGroup.add(mL);
+    const mR = new THREE.Mesh(mastGeo, matSteel); mR.position.set(0.35, 2.0, -1.0); mastGroup.add(mR);
+    const cross = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.15, 0.1), matDark); cross.position.set(0, 3.7, -1.0); mastGroup.add(cross);
+    const hydro = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 2.5), matSteel); hydro.position.set(0, 1.5, -1.0); mastGroup.add(hydro);
+    const chainGeo = new THREE.BoxGeometry(0.02, 3.0, 0.02);
+    const chainL = new THREE.Mesh(chainGeo, matChain); chainL.position.set(-0.25, 2.0, -0.9); mastGroup.add(chainL);
+    const chainR = new THREE.Mesh(chainGeo, matChain); chainR.position.set(0.25, 2.0, -0.9); mastGroup.add(chainR);
+    forklift.add(mastGroup);
 
-    // 9. MAST (Steel Rails)
-    const mastGeo = new THREE.BoxGeometry(0.1, 3.0, 0.15);
-    const mL = new THREE.Mesh(mastGeo, matSteel); mL.position.set(-0.35, 1.8, -1.0); forklift.add(mL);
-    const mR = new THREE.Mesh(mastGeo, matSteel); mR.position.set(0.35, 1.8, -1.0); forklift.add(mR);
-    const cross = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.1, 0.1), matDark); cross.position.set(0, 3.2, -1.0); forklift.add(cross);
-
-    // 10. FORKS (Forward Facing)
+    // 10. REALISTIC FORKS
     forksPart = new THREE.Group();
-    
-    const plate = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.5, 0.1), matDark);
-    plate.position.set(0, 0, 0); 
-    forksPart.add(plate);
+    const upperBar = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.1, 0.05), matIron); upperBar.position.set(0, 0.3, 0); forksPart.add(upperBar);
+    const lowerBar = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.1, 0.05), matIron); lowerBar.position.set(0, -0.3, 0); forksPart.add(lowerBar);
+    const vBarL = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.7, 0.05), matIron); vBarL.position.set(-0.4, 0, 0); forksPart.add(vBarL);
+    const vBarR = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.7, 0.05), matIron); vBarR.position.set(0.4, 0, 0); forksPart.add(vBarR);
 
-    // Tines (Forward)
-    const tineGeo = new THREE.BoxGeometry(0.1, 0.05, 1.2);
-    const tL = new THREE.Mesh(tineGeo, matDark); tL.position.set(-0.3, -0.25, -0.6); forksPart.add(tL);
-    const tR = new THREE.Mesh(tineGeo, matDark); tR.position.set(0.3, -0.25, -0.6); forksPart.add(tR);
+    const gridFrame = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.05, 0.05), matIron); gridFrame.position.set(0, 1.0, 0); forksPart.add(gridFrame);
+    const gridBarGeo = new THREE.BoxGeometry(0.03, 1.0, 0.02);
+    for(let i=-2; i<=2; i++) {
+        const bar = new THREE.Mesh(gridBarGeo, matIron); bar.position.set(i * 0.15, 0.5, 0); forksPart.add(bar);
+    }
 
-    // Heels
-    const heelGeo = new THREE.BoxGeometry(0.1, 0.5, 0.05);
-    const hL = new THREE.Mesh(heelGeo, matDark); hL.position.set(-0.3, 0, -0.05); forksPart.add(hL);
-    const hR = new THREE.Mesh(heelGeo, matDark); hR.position.set(0.3, 0, -0.05); forksPart.add(hR);
+    const tineGeo = new THREE.BoxGeometry(0.12, 0.04, 1.3); 
+    const tL = new THREE.Mesh(tineGeo, matIron); tL.position.set(-0.25, -0.3, -0.65); forksPart.add(tL);
+    const hL = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.7, 0.04), matIron); hL.position.set(-0.25, 0, -0.02); forksPart.add(hL);
+    const tR = new THREE.Mesh(tineGeo, matIron); tR.position.set(0.25, -0.3, -0.65); forksPart.add(tR);
+    const hR = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.7, 0.04), matIron); hR.position.set(0.25, 0, -0.02); forksPart.add(hR);
 
-    // Attach to mast
     forksPart.position.set(0, 0.5, -1.1);
     forklift.add(forksPart);
 
@@ -244,15 +239,10 @@ function buildForklift() {
 
 function loadGameWorld(data) {
     if (!forklift) return;
-
     forklift.position.set(data.forklift.x, data.forklift.y, data.forklift.z);
     forklift.rotation.y = data.forklift.ry;
     currentDriverId = data.forklift.driverId;
-    
-    if (forksPart) {
-        forksPart.position.y = 0.5 + data.forklift.forkHeight; 
-    }
-
+    if (forksPart) { forksPart.position.y = 0.5 + data.forklift.forkHeight; }
     Object.keys(data.players).forEach(id => {
         if (id !== socket.id && !otherPlayers[id]) {
             const mesh = createPlayerMesh(data.players[id].color);
@@ -276,28 +266,16 @@ function attemptToggleDrive() {
 }
 
 // --- NETWORK ---
-
-socket.on('init-game', (data) => {
-    loadGameWorld(data);
-});
-
-socket.on('driver-status', (data) => {
-    currentDriverId = data.driverId;
-    if (currentDriverId === socket.id) isDriving = true;
-});
-
+socket.on('init-game', (data) => { loadGameWorld(data); });
+socket.on('driver-status', (data) => { currentDriverId = data.driverId; if (currentDriverId === socket.id) isDriving = true; });
 socket.on('update-forklift', (data) => {
     if (!isDriving && forklift) {
         forklift.position.x += (data.x - forklift.position.x) * 0.2;
         forklift.position.z += (data.z - forklift.position.z) * 0.2;
         forklift.rotation.y = data.ry;
-        
-        if(forksPart) {
-            forksPart.position.y += ((0.5 + data.forkHeight) - forksPart.position.y) * 0.2;
-        }
+        if(forksPart) { forksPart.position.y += ((0.5 + data.forkHeight) - forksPart.position.y) * 0.2; }
     }
 });
-
 socket.on('update-players', (serverPlayers) => {
     if (!scene) return; 
     Object.keys(serverPlayers).forEach(id => {
@@ -308,17 +286,13 @@ socket.on('update-players', (serverPlayers) => {
         }
     });
 });
-
 socket.on('player-moved', (data) => { 
     if (otherPlayers[data.id]) {
         otherPlayers[data.id].position.set(data.pos.x, data.pos.y - 0.8, data.pos.z);
         otherPlayers[data.id].rotation.y = data.pos.ry;
     }
 });
-
-socket.on('player-left', (id) => { 
-    if (otherPlayers[id]) { scene.remove(otherPlayers[id]); delete otherPlayers[id]; } 
-});
+socket.on('player-left', (id) => { if (otherPlayers[id]) { scene.remove(otherPlayers[id]); delete otherPlayers[id]; } });
 
 function createPlayerMesh(color) {
     const group = new THREE.Group();
@@ -336,16 +310,8 @@ function animate() {
         const rotSpeed = 2.0 * 0.016;
         let moved = false;
 
-        if (moveForward) {
-            forklift.position.x += Math.sin(forklift.rotation.y) * speed;
-            forklift.position.z += Math.cos(forklift.rotation.y) * speed;
-            moved = true;
-        }
-        if (moveBackward) {
-            forklift.position.x -= Math.sin(forklift.rotation.y) * speed;
-            forklift.position.z -= Math.cos(forklift.rotation.y) * speed;
-            moved = true;
-        }
+        if (moveForward) { forklift.position.x += Math.sin(forklift.rotation.y) * speed; forklift.position.z += Math.cos(forklift.rotation.y) * speed; moved = true; }
+        if (moveBackward) { forklift.position.x -= Math.sin(forklift.rotation.y) * speed; forklift.position.z -= Math.cos(forklift.rotation.y) * speed; moved = true; }
         if (moveLeft) { forklift.rotation.y -= rotSpeed; moved = true; }
         if (moveRight) { forklift.rotation.y += rotSpeed; moved = true; }
 
@@ -365,7 +331,6 @@ function animate() {
                 forkHeight: forksPart ? forksPart.position.y - 0.5 : 0 
             });
         }
-
     } else if (controls.isLocked) {
         let delta = 0.016;
         let speed = isShifting ? 150.0 : 400.0;
@@ -387,11 +352,7 @@ function animate() {
         controls.moveForward(-velocity.z * delta);
         camera.position.y += (velocity.y * delta);
 
-        if (camera.position.y < targetHeight) {
-            velocity.y = 0;
-            camera.position.y = targetHeight;
-            canJump = true;
-        }
+        if (camera.position.y < targetHeight) { velocity.y = 0; camera.position.y = targetHeight; canJump = true; }
 
         if (Math.abs(camera.position.x - lastSentPos.x) > 0.1 || Math.abs(camera.position.z - lastSentPos.z) > 0.1) {
             socket.emit('move', { x: camera.position.x, y: camera.position.y, z: camera.position.z, ry: camera.rotation.y });
