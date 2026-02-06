@@ -51,8 +51,8 @@ function init3D() {
         controls.lock();
     });
 
-    // LIGHTING (Sharp Shadows)
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+    // LIGHTING (Industrial High-Bay Style)
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
     scene.add(ambientLight);
     
     const dirLight = new THREE.DirectionalLight(0xffffff, 1.1);
@@ -63,12 +63,12 @@ function init3D() {
     scene.add(dirLight);
     
     // GROUND
-    const ground = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.MeshStandardMaterial({color: 0x333333, roughness: 0.8})); // Asphalt color
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.MeshStandardMaterial({color: 0x333333, roughness: 0.8}));
     ground.rotation.x = -Math.PI / 2;
     ground.receiveShadow = true;
     scene.add(ground);
 
-    // --- BUILD THE INDUSTRIAL FORKLIFT ---
+    // --- BUILD THE V2 FORKLIFT ---
     buildForklift();
 
     // Inputs
@@ -99,103 +99,117 @@ function init3D() {
     animate();
 }
 
-// --- 🏗️ THE INDUSTRIAL BUILDER ---
+// --- 🏗️ THE UPDATED BUILDER ---
 function buildForklift() {
     forklift = new THREE.Group();
     
-    // -- COLORS (You can change these!) --
-    const COLOR_BODY = 0xFFCC00; // Industrial Yellow
-    const COLOR_DARK = 0x222222; // Dark Grey / Black
-    const COLOR_STEEL = 0x888899; // Shiny Steel
+    // -- COLORS --
+    const COLOR_BODY = 0xE6B800; // "Caterpillar" Yellow (Darker/Orange-ish)
+    const COLOR_DARK = 0x222222; 
+    const COLOR_STEEL = 0x888899; 
 
-    const matBody = new THREE.MeshStandardMaterial({ color: COLOR_BODY, roughness: 0.4 });
+    const matBody = new THREE.MeshStandardMaterial({ color: COLOR_BODY, roughness: 0.3 });
     const matDark = new THREE.MeshStandardMaterial({ color: COLOR_DARK, roughness: 0.8 });
     const matSteel = new THREE.MeshStandardMaterial({ color: COLOR_STEEL, roughness: 0.3, metalness: 0.6 });
-    const matTank = new THREE.MeshStandardMaterial({ color: 0xDDDDDD }); // White Propane Tank
+    const matTank = new THREE.MeshStandardMaterial({ color: 0xEEEEEE });
 
-    // 1. CHASSIS
+    // 1. CHASSIS (SQUARE BACK)
     const chassisGroup = new THREE.Group();
     
-    // Lower Base
-    const base = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.5, 2.4), matDark);
-    base.position.y = 0.5;
-    base.castShadow = true;
-    chassisGroup.add(base);
-
-    // Yellow Body (Top Half)
-    const body = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.7, 1.4), matBody);
-    body.position.set(0, 1.1, 0.0);
+    // Main Body Block
+    const body = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.8, 1.8), matBody);
+    body.position.set(0, 0.9, 0.2);
     body.castShadow = true;
     chassisGroup.add(body);
 
-    // Counterweight (Curved Back)
-    const cwGeo = new THREE.CylinderGeometry(0.7, 0.7, 1.4, 32, 1, false, 0, Math.PI);
-    const cw = new THREE.Mesh(cwGeo, matBody);
-    cw.rotation.z = Math.PI / 2;
-    cw.rotation.x = Math.PI / 2; // Face backwards
-    cw.position.set(0, 1.1, 0.71); // Stuck on back
+    // The Counterweight (Heavy Block at the back)
+    // Removed the cylinder, added a chamfered-looking block
+    const cw = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.8, 0.6), matBody);
+    cw.position.set(0, 0.9, 1.2); // Stick it on the back
     chassisGroup.add(cw);
+    
+    // Floorplate
+    const floor = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.2, 1.0), matDark);
+    floor.position.set(0, 0.5, -0.8);
+    chassisGroup.add(floor);
 
     forklift.add(chassisGroup);
 
-    // 2. PROPANE TANK (On the back)
-    const tank = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.9, 16), matTank);
+    // 2. PROPANE TANK
+    const tank = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.8, 16), matTank);
     tank.rotation.z = Math.PI / 2;
-    tank.position.set(0, 1.6, 0.9);
+    tank.position.set(0, 1.5, 1.2);
     forklift.add(tank);
 
     // 3. WHEELS
     const wheelGeo = new THREE.CylinderGeometry(0.4, 0.4, 0.3, 24);
     wheelGeo.rotateZ(Math.PI / 2);
     
-    const wFL = new THREE.Mesh(wheelGeo, matDark); wFL.position.set(-0.75, 0.4, -0.8); forklift.add(wFL);
-    const wFR = new THREE.Mesh(wheelGeo, matDark); wFR.position.set(0.75, 0.4, -0.8); forklift.add(wFR);
+    const wFL = new THREE.Mesh(wheelGeo, matDark); wFL.position.set(-0.75, 0.4, -0.6); forklift.add(wFL);
+    const wFR = new THREE.Mesh(wheelGeo, matDark); wFR.position.set(0.75, 0.4, -0.6); forklift.add(wFR);
     
-    // Rear wheels are smaller
-    const wheelGeoSm = new THREE.CylinderGeometry(0.3, 0.3, 0.3, 24);
-    wheelGeoSm.rotateZ(Math.PI / 2);
-    const wRL = new THREE.Mesh(wheelGeoSm, matDark); wRL.position.set(-0.75, 0.3, 1.0); forklift.add(wRL);
-    const wRR = new THREE.Mesh(wheelGeoSm, matDark); wRR.position.set(0.75, 0.3, 1.0); forklift.add(wRR);
+    const wRL = new THREE.Mesh(wheelGeo, matDark); wRL.position.set(-0.75, 0.4, 1.2); forklift.add(wRL);
+    const wRR = new THREE.Mesh(wheelGeo, matDark); wRR.position.set(0.75, 0.4, 1.2); forklift.add(wRR);
 
-    // 4. ROLL CAGE (Thinner, Black)
+    // 4. ROLL CAGE
     const cageGeo = new THREE.CylinderGeometry(0.04, 0.04, 2.2, 8);
     const cFL = new THREE.Mesh(cageGeo, matDark); cFL.position.set(-0.65, 2.0, -0.5); forklift.add(cFL);
     const cFR = new THREE.Mesh(cageGeo, matDark); cFR.position.set(0.65, 2.0, -0.5); forklift.add(cFR);
-    const cRL = new THREE.Mesh(cageGeo, matDark); cRL.position.set(-0.65, 2.0, 0.8); forklift.add(cRL);
-    const cRR = new THREE.Mesh(cageGeo, matDark); cRR.position.set(0.65, 2.0, 0.8); forklift.add(cRR);
+    const cRL = new THREE.Mesh(cageGeo, matDark); cRL.position.set(-0.65, 2.0, 1.0); forklift.add(cRL);
+    const cRR = new THREE.Mesh(cageGeo, matDark); cRR.position.set(0.65, 2.0, 1.0); forklift.add(cRR);
 
-    // Roof (Grid)
-    const roof = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.05, 1.4), matDark);
-    roof.position.set(0, 3.1, 0.15);
+    // Roof
+    const roof = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.05, 1.6), matDark);
+    roof.position.set(0, 3.1, 0.25);
     forklift.add(roof);
 
     // 5. INTERIOR
-    const seat = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.1, 0.6), new THREE.MeshStandardMaterial({color: 0x000000}));
-    seat.position.set(0, 1.4, 0.2);
+    const seat = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.1, 0.6), new THREE.MeshStandardMaterial({color: 0x111111}));
+    seat.position.set(0, 1.1, 0.2);
     forklift.add(seat);
-    const seatBack = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.6, 0.1), new THREE.MeshStandardMaterial({color: 0x000000}));
-    seatBack.position.set(0, 1.7, 0.5);
-    forklift.add(seatBack);
+    
+    const steering = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.6), matDark);
+    steering.position.set(0, 1.5, -0.4);
+    steering.rotation.x = 0.5;
+    forklift.add(steering);
+    const wheel = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.03, 8, 16), matDark);
+    wheel.position.set(0, 1.8, -0.55);
+    wheel.rotation.x = 0.5;
+    forklift.add(wheel);
 
-    // 6. THE MAST (Steel Rails)
+
+    // 6. MAST
     const mastGeo = new THREE.BoxGeometry(0.1, 3.0, 0.15);
-    const mL = new THREE.Mesh(mastGeo, matSteel); mL.position.set(-0.4, 1.8, -1.2); forklift.add(mL);
-    const mR = new THREE.Mesh(mastGeo, matSteel); mR.position.set(0.4, 1.8, -1.2); forklift.add(mR);
+    const mL = new THREE.Mesh(mastGeo, matSteel); mL.position.set(-0.4, 1.8, -1.0); forklift.add(mL);
+    const mR = new THREE.Mesh(mastGeo, matSteel); mR.position.set(0.4, 1.8, -1.0); forklift.add(mR);
+    const cross = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.1, 0.1), matDark); cross.position.set(0, 3.2, -1.0); forklift.add(cross);
 
-    // 7. THE FORKS (Moving Group)
+    // 7. FORKS (FIXED: POINTING FORWARD)
     forksPart = new THREE.Group();
     
-    // Back Plate
+    // Back Plate (The part that slides up/down)
     const plate = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.5, 0.1), matDark);
+    plate.position.set(0, 0, 0); 
     forksPart.add(plate);
 
-    // Tines (The actual forks)
-    const tineGeo = new THREE.BoxGeometry(0.1, 0.05, 1.4);
-    const tL = new THREE.Mesh(tineGeo, matDark); tL.position.set(-0.3, -0.2, 0.7); forksPart.add(tL);
-    const tR = new THREE.Mesh(tineGeo, matDark); tR.position.set(0.3, -0.2, 0.7); forksPart.add(tR);
+    // Tines (The actual forks) - Rotated to point FORWARD (-Z)
+    const tineGeo = new THREE.BoxGeometry(0.1, 0.05, 1.2);
+    
+    const tL = new THREE.Mesh(tineGeo, matDark); 
+    tL.position.set(-0.3, -0.25, -0.6); // Negative Z means "In front of the plate"
+    forksPart.add(tL);
 
-    // Initial position of forks (Height 0)
-    forksPart.position.set(0, 0.5, -1.3);
+    const tR = new THREE.Mesh(tineGeo, matDark); 
+    tR.position.set(0.3, -0.25, -0.6); // Negative Z means "In front of the plate"
+    forksPart.add(tR);
+
+    // Vertical part of the fork (Heel)
+    const heelGeo = new THREE.BoxGeometry(0.1, 0.5, 0.05);
+    const hL = new THREE.Mesh(heelGeo, matDark); hL.position.set(-0.3, 0, -0.05); forksPart.add(hL);
+    const hR = new THREE.Mesh(heelGeo, matDark); hR.position.set(0.3, 0, -0.05); forksPart.add(hR);
+
+    // Attach to mast
+    forksPart.position.set(0, 0.5, -1.1);
     forklift.add(forksPart);
 
     scene.add(forklift);
@@ -204,7 +218,6 @@ function buildForklift() {
 function loadGameWorld(data) {
     if (!forklift) return;
 
-    // Apply server data
     forklift.position.set(data.forklift.x, data.forklift.y, data.forklift.z);
     forklift.rotation.y = data.forklift.ry;
     currentDriverId = data.forklift.driverId;
@@ -253,7 +266,6 @@ socket.on('update-forklift', (data) => {
         forklift.rotation.y = data.ry;
         
         if(forksPart) {
-            // 0.5 is base height
             forksPart.position.y += ((0.5 + data.forkHeight) - forksPart.position.y) * 0.2;
         }
     }
