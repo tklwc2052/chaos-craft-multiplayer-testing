@@ -12,8 +12,8 @@ let canJump = false;
 let lastSentPos = { x: 0, y: 0, z: 0, ry: 0 };
 
 // FORKLIFT VARIABLES
-let forklift = null;       // The whole vehicle group
-let forksPart = null;      // The specific moving part
+let forklift = null;       
+let forksPart = null;      
 let isDriving = false;
 let currentDriverId = null;
 
@@ -33,6 +33,7 @@ function init3D() {
     scene.background = new THREE.Color(0x87ceeb); 
     scene.fog = new THREE.Fog(0x87ceeb, 10, 80);
 
+    // Camera setup
     camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
     camera.rotation.order = 'YXZ';
 
@@ -43,18 +44,22 @@ function init3D() {
     document.body.appendChild(renderer.domElement);
 
     controls = new THREE.PointerLockControls(camera, document.body);
-    camera.position.set(0, 5, 10);
+    camera.position.set(5, 5, 10);
+    camera.lookAt(0, 0, 0);
     
     document.addEventListener('click', () => {
         controls.lock();
     });
 
-    // LIGHTING
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    // LIGHTING (Improved for better shadows on the new model)
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
     scene.add(ambientLight);
-    const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
-    dirLight.position.set(20, 30, 10);
+    
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
+    dirLight.position.set(10, 20, 10);
     dirLight.castShadow = true;
+    dirLight.shadow.mapSize.width = 2048;
+    dirLight.shadow.mapSize.height = 2048;
     scene.add(dirLight);
     
     // GROUND
@@ -63,7 +68,7 @@ function init3D() {
     ground.receiveShadow = true;
     scene.add(ground);
 
-    // --- BUILD THE FORKLIFT IN CODE ---
+    // --- BUILD THE HD FORKLIFT ---
     buildForklift();
 
     // Inputs
@@ -77,7 +82,6 @@ function init3D() {
         
         if(e.code === 'KeyE') attemptToggleDrive();
         
-        // Fork Controls
         if(e.code === 'KeyR') forkMovingUp = true;
         if(e.code === 'KeyF') forkMovingDown = true;
     });
@@ -95,59 +99,118 @@ function init3D() {
     animate();
 }
 
-// --- 🏗️ THE BUILDER FUNCTION ---
+// --- 🏗️ THE HIGH-DETAIL BUILDER ---
 function buildForklift() {
     forklift = new THREE.Group();
     
-    // MATERIALS
-    const yellowMat = new THREE.MeshStandardMaterial({ color: 0xFFAA00 });
-    const blackMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
-    const greyMat = new THREE.MeshStandardMaterial({ color: 0x555555 });
-
-    // 1. CHASSIS (Main Body)
-    const chassis = new THREE.Mesh(new THREE.BoxGeometry(2, 1, 3), yellowMat);
-    chassis.position.y = 1.0; // Lift off ground for wheels
-    chassis.castShadow = true;
-    forklift.add(chassis);
-
-    // 2. CABIN (Top Cage)
-    const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.8, 1.5, 1.5), new THREE.MeshStandardMaterial({ color: 0x333333, wireframe: false, transparent: true, opacity: 0.7 }));
-    cabin.position.set(0, 2.25, 0.5);
-    forklift.add(cabin);
-
-    // 3. WHEELS (4 Cylinders)
-    const wheelGeo = new THREE.CylinderGeometry(0.5, 0.5, 0.4, 16);
-    wheelGeo.rotateZ(Math.PI / 2); // Flip to correct orientation
+    // -- PALETTE --
+    const bodyColor = 0xFFA500; // Safety Orange/Yellow
+    const darkColor = 0x222222; // Dark Grey (Tires/Cage)
+    const metalColor = 0x888888; // Silver (Mast)
     
-    const w1 = new THREE.Mesh(wheelGeo, blackMat); w1.position.set(-1.1, 0.5, 1); forklift.add(w1);
-    const w2 = new THREE.Mesh(wheelGeo, blackMat); w2.position.set(1.1, 0.5, 1); forklift.add(w2);
-    const w3 = new THREE.Mesh(wheelGeo, blackMat); w3.position.set(-1.1, 0.5, -1); forklift.add(w3);
-    const w4 = new THREE.Mesh(wheelGeo, blackMat); w4.position.set(1.1, 0.5, -1); forklift.add(w4);
+    const matBody = new THREE.MeshStandardMaterial({ color: bodyColor, roughness: 0.3 });
+    const matDark = new THREE.MeshStandardMaterial({ color: darkColor, roughness: 0.9 });
+    const matMetal = new THREE.MeshStandardMaterial({ color: metalColor, roughness: 0.4, metalness: 0.6 });
+    const matSeat = new THREE.MeshStandardMaterial({ color: 0x111111 });
 
-    // 4. MAST (The vertical rails at the front)
-    const mast = new THREE.Mesh(new THREE.BoxGeometry(1.2, 3.5, 0.2), greyMat);
-    mast.position.set(0, 2.0, -1.6); // Front of the car
-    forklift.add(mast);
+    // 1. CHASSIS (The heavy base)
+    // Main slab
+    const base = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.6, 2.8), matBody);
+    base.position.y = 0.6; // Lifted for wheels
+    base.castShadow = true;
+    forklift.add(base);
 
-    // 5. THE FORKS (This is the moving part!)
+    // Engine Cover / Counterweight (The bulky back part)
+    const rear = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.8, 1.2), matBody);
+    rear.position.set(0, 1.2, 0.8);
+    rear.castShadow = true;
+    forklift.add(rear);
+
+    // 2. WHEELS (Front are bigger)
+    const wheelGeoF = new THREE.CylinderGeometry(0.5, 0.5, 0.4, 24);
+    wheelGeoF.rotateZ(Math.PI / 2);
+    const wheelGeoR = new THREE.CylinderGeometry(0.35, 0.35, 0.4, 24);
+    wheelGeoR.rotateZ(Math.PI / 2);
+
+    // Front Wheels
+    const wf1 = new THREE.Mesh(wheelGeoF, matDark); wf1.position.set(-0.9, 0.5, -0.8); forklift.add(wf1);
+    const wf2 = new THREE.Mesh(wheelGeoF, matDark); wf2.position.set(0.9, 0.5, -0.8); forklift.add(wf2);
+    
+    // Rear Wheels
+    const wr1 = new THREE.Mesh(wheelGeoR, matDark); wr1.position.set(-0.9, 0.35, 1.0); forklift.add(wr1);
+    const wr2 = new THREE.Mesh(wheelGeoR, matDark); wr2.position.set(0.9, 0.35, 1.0); forklift.add(wr2);
+
+    // 3. ROLL CAGE (The Bars)
+    const barGeo = new THREE.CylinderGeometry(0.06, 0.06, 2.2, 8);
+    
+    // Front Bars
+    const barFL = new THREE.Mesh(barGeo, matDark); barFL.position.set(-0.7, 2.0, -0.6); forklift.add(barFL);
+    const barFR = new THREE.Mesh(barGeo, matDark); barFR.position.set(0.7, 2.0, -0.6); forklift.add(barFR);
+    
+    // Rear Bars
+    const barRL = new THREE.Mesh(barGeo, matDark); barRL.position.set(-0.7, 2.0, 0.8); forklift.add(barRL);
+    const barRR = new THREE.Mesh(barGeo, matDark); barRR.position.set(0.7, 2.0, 0.8); forklift.add(barRR);
+
+    // Roof Grid
+    const roof = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.1, 1.6), matDark);
+    roof.position.set(0, 3.1, 0.1);
+    forklift.add(roof);
+
+    // 4. INTERIOR (Seat & Steering)
+    // Seat
+    const seatBottom = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.2, 0.8), matSeat);
+    seatBottom.position.set(0, 1.0, 0.2);
+    forklift.add(seatBottom);
+    
+    const seatBack = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 0.2), matSeat);
+    seatBack.position.set(0, 1.4, 0.6);
+    forklift.add(seatBack);
+
+    // Steering Column & Wheel
+    const col = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.8), matDark);
+    col.position.set(0, 1.5, -0.4);
+    col.rotation.x = -0.5;
+    forklift.add(col);
+
+    const sWheel = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.05, 16), matSeat);
+    sWheel.position.set(0, 1.9, -0.55);
+    sWheel.rotation.x = 1.0;
+    forklift.add(sWheel);
+
+    // 5. THE MAST (Static Rails)
+    const mastGeo = new THREE.BoxGeometry(0.15, 3.5, 0.15);
+    const mastL = new THREE.Mesh(mastGeo, matMetal); mastL.position.set(-0.5, 2.0, -1.4); forklift.add(mastL);
+    const mastR = new THREE.Mesh(mastGeo, matMetal); mastR.position.set(0.5, 2.0, -1.4); forklift.add(mastR);
+    
+    // Crossbar
+    const crossBar = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.2, 0.1), matMetal);
+    crossBar.position.set(0, 3.5, -1.4);
+    forklift.add(crossBar);
+
+
+    // 6. THE FORKS (Moving Part)
     forksPart = new THREE.Group();
     
-    // The plate holding the forks
-    const liftPlate = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.5, 0.2), blackMat);
-    forksPart.add(liftPlate);
+    // The Carriage (Horizontal plate)
+    const carriage = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.8, 0.1), matDark);
+    carriage.castShadow = true;
+    forksPart.add(carriage);
 
-    // The two prongs
-    const prongGeo = new THREE.BoxGeometry(0.2, 0.1, 1.5);
-    const leftProng = new THREE.Mesh(prongGeo, blackMat);
-    leftProng.position.set(-0.4, -0.2, -0.7);
-    forksPart.add(leftProng);
+    // The Tines (L-Shape)
+    const tineGeoV = new THREE.BoxGeometry(0.15, 0.8, 0.05);
+    const tineGeoH = new THREE.BoxGeometry(0.15, 0.05, 1.5);
 
-    const rightProng = new THREE.Mesh(prongGeo, blackMat);
-    rightProng.position.set(0.4, -0.2, -0.7);
-    forksPart.add(rightProng);
+    // Left Tine
+    const lV = new THREE.Mesh(tineGeoV, matDark); lV.position.set(-0.3, -0.2, 0.1); forksPart.add(lV);
+    const lH = new THREE.Mesh(tineGeoH, matDark); lH.position.set(-0.3, -0.6, 0.8); forksPart.add(lH);
 
-    // Initial Position of Forks relative to the forklift
-    forksPart.position.set(0, 0.5, -1.8); 
+    // Right Tine
+    const rV = new THREE.Mesh(tineGeoV, matDark); rV.position.set(0.3, -0.2, 0.1); forksPart.add(rV);
+    const rH = new THREE.Mesh(tineGeoH, matDark); rH.position.set(0.3, -0.6, 0.8); forksPart.add(rH);
+
+    // Initial Position relative to forklift center
+    // X=0, Y=0.5 (near ground), Z=-1.55 (in front of mast)
+    forksPart.position.set(0, 0.6, -1.55); 
     forklift.add(forksPart);
 
     scene.add(forklift);
@@ -156,14 +219,13 @@ function buildForklift() {
 function loadGameWorld(data) {
     if (!forklift) return;
 
-    // Set Initial Server Positions
+    // Apply server data
     forklift.position.set(data.forklift.x, data.forklift.y, data.forklift.z);
     forklift.rotation.y = data.forklift.ry;
     currentDriverId = data.forklift.driverId;
     
     if (forksPart) {
-        // Map 0.0 -> 0.5 (min height) to match visual model
-        forksPart.position.y = 0.5 + data.forklift.forkHeight; 
+        forksPart.position.y = 0.6 + data.forklift.forkHeight; 
     }
 
     Object.keys(data.players).forEach(id => {
@@ -201,14 +263,14 @@ socket.on('driver-status', (data) => {
 
 socket.on('update-forklift', (data) => {
     if (!isDriving && forklift) {
-        // Interpolate movement for smoothness
+        // Smooth Interpolation
         forklift.position.x += (data.x - forklift.position.x) * 0.2;
         forklift.position.z += (data.z - forklift.position.z) * 0.2;
         forklift.rotation.y = data.ry;
         
         if(forksPart) {
-             // 0.5 is our "Floor" for the forks relative to the car center
-            forksPart.position.y += ((0.5 + data.forkHeight) - forksPart.position.y) * 0.2;
+            // 0.6 is our base height offset
+            forksPart.position.y += ((0.6 + data.forkHeight) - forksPart.position.y) * 0.2;
         }
     }
 });
@@ -265,29 +327,34 @@ function animate() {
         if (moveRight) { forklift.rotation.y += rotSpeed; moved = true; }
 
         if (forksPart) {
-            // Limits: 0.5 (Bottom) to 3.0 (Top)
+            // Visual Limit: 0.6 (Floor) to 3.0 (Top)
             if (forkMovingUp && forksPart.position.y < 3.0) { 
                 forksPart.position.y += 0.05; 
                 moved = true; 
             }
-            if (forkMovingDown && forksPart.position.y > 0.5) { 
+            if (forkMovingDown && forksPart.position.y > 0.6) { 
                 forksPart.position.y -= 0.05; 
                 moved = true; 
             }
         }
 
-        const seatOffset = new THREE.Vector3(0, 3.5, 3.0); 
-        const cameraPos = forklift.position.clone().add(seatOffset.applyAxisAngle(new THREE.Vector3(0,1,0), forklift.rotation.y));
-        camera.position.copy(cameraPos);
-        camera.lookAt(forklift.position.x, forklift.position.y, forklift.position.z - 5);
+        // Camera locked to seat
+        const seatOffset = new THREE.Vector3(0, 2.8, 0.0); 
+        camera.position.copy(forklift.position).add(seatOffset);
+        
+        // Optional: Make camera look slightly forward relative to car
+        // camera.lookAt(
+        //     forklift.position.x + Math.sin(forklift.rotation.y) * 10,
+        //     forklift.position.y,
+        //     forklift.position.z + Math.cos(forklift.rotation.y) * 10
+        // );
 
         if (moved) {
             socket.emit('move-forklift', {
                 x: forklift.position.x,
                 z: forklift.position.z,
                 ry: forklift.rotation.y,
-                // Send "Relative Height" (0.0 to 2.5) so server stays clean
-                forkHeight: forksPart ? forksPart.position.y - 0.5 : 0 
+                forkHeight: forksPart ? forksPart.position.y - 0.6 : 0 // Normalize to 0
             });
         }
 
