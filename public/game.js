@@ -65,7 +65,7 @@ function init3D() {
     ground.receiveShadow = true;
     scene.add(ground);
 
-    // --- BUILD THE V12 FORKLIFT ---
+    // --- BUILD THE V14 FORKLIFT ---
     buildForklift();
 
     window.addEventListener('keydown', (e) => {
@@ -93,7 +93,7 @@ function init3D() {
     animate();
 }
 
-// --- 🏗️ THE BUILDER (V12) ---
+// --- 🏗️ THE BUILDER (V14) ---
 function buildForklift() {
     forklift = new THREE.Group();
     
@@ -102,7 +102,7 @@ function buildForklift() {
     const COLOR_DARK = 0x222222; 
     const COLOR_IRON = 0x333333; 
     const COLOR_STEEL = 0xAAAAAA; 
-    const COLOR_CAGE = 0x1a1a1a; 
+    const COLOR_CAGE = 0x050505; // Jet Black
     const COLOR_CHAIN = 0x111111;
     const COLOR_SEAT = 0x111111; 
     const COLOR_TANK_GREY = 0x999999; 
@@ -111,24 +111,23 @@ function buildForklift() {
     const matDark = new THREE.MeshStandardMaterial({ color: COLOR_DARK, roughness: 0.8 });
     const matIron = new THREE.MeshStandardMaterial({ color: COLOR_IRON, roughness: 0.7, metalness: 0.4 });
     const matSteel = new THREE.MeshStandardMaterial({ color: COLOR_STEEL, roughness: 0.3, metalness: 0.6 });
-    const matCage = new THREE.MeshStandardMaterial({ color: COLOR_CAGE, roughness: 0.5 });
+    const matCage = new THREE.MeshStandardMaterial({ color: COLOR_CAGE, roughness: 0.4 });
     const matChain = new THREE.MeshStandardMaterial({ color: COLOR_CHAIN, roughness: 0.9 });
     const matSeat = new THREE.MeshStandardMaterial({ color: COLOR_SEAT, roughness: 0.9 });
     const matTank = new THREE.MeshStandardMaterial({ color: COLOR_TANK_GREY, roughness: 0.4 });
 
     const chassisGroup = new THREE.Group();
     
-    // 1. REAR SECTION
-    const rearBlock = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.0, 0.8), matBody);
-    rearBlock.position.set(0, 1.0, 0.8); rearBlock.castShadow = true; chassisGroup.add(rearBlock);
+    // 1. REAR SECTION (Engine)
+    const rearBlock = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.7, 0.8), matBody);
+    rearBlock.position.set(0, 0.85, 0.8); rearBlock.castShadow = true; chassisGroup.add(rearBlock);
 
-    // Rounded Back
-    const cwBox = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.0, 0.5), matBody); cwBox.position.set(0, 1.0, 1.35); chassisGroup.add(cwBox);
-    const cornerGeo = new THREE.CylinderGeometry(0.25, 0.25, 1.0, 16);
-    const cL = new THREE.Mesh(cornerGeo, matBody); cL.position.set(-0.4, 1.0, 1.35); chassisGroup.add(cL);
-    const cR = new THREE.Mesh(cornerGeo, matBody); cR.position.set(0.4, 1.0, 1.35); chassisGroup.add(cR);
+    const cwBox = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.9, 0.5), matBody); cwBox.position.set(0, 0.95, 1.35); chassisGroup.add(cwBox);
+    const cornerGeo = new THREE.CylinderGeometry(0.25, 0.25, 0.9, 16);
+    const cL = new THREE.Mesh(cornerGeo, matBody); cL.position.set(-0.4, 0.95, 1.35); chassisGroup.add(cL);
+    const cR = new THREE.Mesh(cornerGeo, matBody); cR.position.set(0.4, 0.95, 1.35); chassisGroup.add(cR);
 
-    // 2. FRONT SECTION
+    // 2. FRONT SECTION (Dash)
     const frontCowling = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.6, 0.5), matBody);
     frontCowling.position.set(0, 0.8, -0.6); frontCowling.castShadow = true; chassisGroup.add(frontCowling);
 
@@ -136,29 +135,36 @@ function buildForklift() {
     const floor = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.1, 1.0), matBody);
     floor.position.set(0, 0.45, 0.1); chassisGroup.add(floor);
 
-    // --- 4. CONNECTED FENDERS (Side Skirts) ---
+    // --- 4. FENDERS & SIDE SKIRTS (ANGLED) ---
     // Front Arches
     const archGeo = new THREE.CylinderGeometry(0.5, 0.5, 0.3, 32, 1, true, 0, Math.PI);
-    const fFL = new THREE.Mesh(archGeo, matBody); fFL.rotation.z = Math.PI/2; fFL.position.set(-0.55, 0.4, -0.6); chassisGroup.add(fFL);
-    const fFR = new THREE.Mesh(archGeo, matBody); fFR.rotation.z = Math.PI/2; fFR.position.set(0.55, 0.4, -0.6); chassisGroup.add(fFR);
+    const fFL = new THREE.Mesh(archGeo, matBody); fFL.rotation.z = Math.PI/2; fFL.position.set(-0.55, 0.4, -0.5); chassisGroup.add(fFL);
+    const fFR = new THREE.Mesh(archGeo, matBody); fFR.rotation.z = Math.PI/2; fFR.position.set(0.55, 0.4, -0.5); chassisGroup.add(fFR);
 
     // Rear Boxes
     const boxFenderGeo = new THREE.BoxGeometry(0.3, 0.1, 0.8);
-    const fRL = new THREE.Mesh(boxFenderGeo, matBody); fRL.position.set(-0.55, 0.8, 0.8); chassisGroup.add(fRL);
-    const fRR = new THREE.Mesh(boxFenderGeo, matBody); fRR.position.set(0.55, 0.8, 0.8); chassisGroup.add(fRR);
+    const fRL = new THREE.Mesh(boxFenderGeo, matBody); fRL.position.set(-0.55, 0.7, 0.8); chassisGroup.add(fRL);
+    const fRR = new THREE.Mesh(boxFenderGeo, matBody); fRR.position.set(0.55, 0.7, 0.8); chassisGroup.add(fRR);
 
-    // ** THE CONNECTOR ** (Fills gap between Z=-0.6 and Z=0.8)
-    const connectorGeo = new THREE.BoxGeometry(0.3, 0.1, 1.4);
+    // ** NEW ANGLED CONNECTORS **
+    // Step (Flat part)
+    const stepGeo = new THREE.BoxGeometry(0.3, 0.05, 0.8);
+    const sL = new THREE.Mesh(stepGeo, matBody); sL.position.set(-0.55, 0.4, -0.1); chassisGroup.add(sL);
+    const sR = new THREE.Mesh(stepGeo, matBody); sR.position.set(0.55, 0.4, -0.1); chassisGroup.add(sR);
+
+    // Ramp (Angled part connecting step to rear fender)
+    const rampGeo = new THREE.BoxGeometry(0.3, 0.05, 0.55);
     
-    // Left Connector
-    const conL = new THREE.Mesh(connectorGeo, matBody);
-    conL.position.set(-0.55, 0.45, 0.1); // Matches fender width, sits low
-    chassisGroup.add(conL);
+    const rL = new THREE.Mesh(rampGeo, matBody);
+    rL.position.set(-0.55, 0.55, 0.45); // Centered between step and rear
+    rL.rotation.x = -0.6; // Angled Up
+    chassisGroup.add(rL);
 
-    // Right Connector
-    const conR = new THREE.Mesh(connectorGeo, matBody);
-    conR.position.set(0.55, 0.45, 0.1); 
-    chassisGroup.add(conR);
+    const rR = new THREE.Mesh(rampGeo, matBody);
+    rR.position.set(0.55, 0.55, 0.45);
+    rR.rotation.x = -0.6; // Angled Up
+    chassisGroup.add(rR);
+
 
     // 5. UNDERCARRIAGE
     const base = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.4, 2.0), matDark); base.position.set(0, 0.4, 0.3); chassisGroup.add(base);
@@ -166,7 +172,7 @@ function buildForklift() {
 
     // 6. PROPANE TANK
     const tankGroup = new THREE.Group();
-    tankGroup.position.set(0, 1.6, 1.2); 
+    tankGroup.position.set(0, 1.5, 1.2); 
     const tBody = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.8, 16), matTank);
     tBody.rotation.z = Math.PI / 2; tankGroup.add(tBody);
     const strapGeo = new THREE.CylinderGeometry(0.21, 0.21, 0.05, 16); 
@@ -182,20 +188,14 @@ function buildForklift() {
     const wRL = new THREE.Mesh(wheelGeoRear, matDark); wRL.position.set(-0.55, 0.28, 0.8); forklift.add(wRL);
     const wRR = new THREE.Mesh(wheelGeoRear, matDark); wRR.position.set(0.55, 0.28, 0.8); forklift.add(wRR);
 
-    // --- 8. CAGE (Extended & Lowered) ---
+    // 8. CAGE (Black & Angled)
     const cageGroup = new THREE.Group();
-    // Lowered height (1.6 instead of 1.8)
     const pipeGeo = new THREE.CylinderGeometry(0.04, 0.04, 1.6, 12);
-    const pipeSideGeo = new THREE.CylinderGeometry(0.04, 0.04, 1.6, 12); // Longer side bars to reach back
-    
-    // New Lower Height
-    const POST_Y = 1.8; 
-    const ROOF_Y = 2.6;
+    const pipeSideGeo = new THREE.CylinderGeometry(0.04, 0.04, 1.6, 12);
+    const POST_Y = 1.8; const ROOF_Y = 2.6;
 
-    const pFL = new THREE.Mesh(pipeGeo, matCage); pFL.position.set(-0.50, POST_Y, -0.5); cageGroup.add(pFL);
-    const pFR = new THREE.Mesh(pipeGeo, matCage); pFR.position.set(0.50, POST_Y, -0.5); cageGroup.add(pFR);
-    
-    // Rear Posts Moved Back (Z=1.0) to cover tank/seat
+    const pFL = new THREE.Mesh(pipeGeo, matCage); pFL.position.set(-0.50, POST_Y, -0.5); pFL.rotation.x = 0.1; cageGroup.add(pFL);
+    const pFR = new THREE.Mesh(pipeGeo, matCage); pFR.position.set(0.50, POST_Y, -0.5); pFR.rotation.x = 0.1; cageGroup.add(pFR);
     const pRL = new THREE.Mesh(pipeGeo, matCage); pRL.position.set(-0.50, POST_Y, 1.0); pRL.rotation.x = -0.1; cageGroup.add(pRL);
     const pRR = new THREE.Mesh(pipeGeo, matCage); pRR.position.set(0.50, POST_Y, 1.0); pRR.rotation.x = -0.1; cageGroup.add(pRR);
     
@@ -206,23 +206,18 @@ function buildForklift() {
     for(let i=0; i<5; i++) { 
         const slat = new THREE.Mesh(slatGeo, matCage); slat.position.set(0, ROOF_Y + 0.02, -0.3 + (i * 0.25)); slat.rotation.x = 0.2; cageGroup.add(slat);
     }
-    const braceGeo = new THREE.CylinderGeometry(0.03, 0.03, 1.6, 8);
-    const b1 = new THREE.Mesh(braceGeo, matCage); b1.position.set(0, 1.9, 1.05); b1.rotation.z = 0.4; b1.rotation.x = -0.1; cageGroup.add(b1);
-    const b2 = new THREE.Mesh(braceGeo, matCage); b2.position.set(0, 1.9, 1.05); b2.rotation.z = -0.4; b2.rotation.x = -0.1; cageGroup.add(b2);
     forklift.add(cageGroup);
 
     // 9. INTERIOR
     const steering = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.6), matDark); steering.position.set(0, 1.4, -0.4); steering.rotation.x = 0.5; forklift.add(steering);
     const wheel = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.03, 8, 16), matDark); wheel.position.set(0, 1.7, -0.55); wheel.rotation.x = 0.5; forklift.add(wheel);
-
     const seatGroup = new THREE.Group();
     const sBot = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.15, 0.6), matSeat); sBot.position.set(0, 0, 0); seatGroup.add(sBot);
     const sBack = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.7, 0.1), matSeat); sBack.position.set(0, 0.35, 0.3); sBack.rotation.x = -0.15; seatGroup.add(sBack);
-    seatGroup.position.set(0, 1.55, 0.6); forklift.add(seatGroup);
+    seatGroup.position.set(0, 1.25, 0.6); forklift.add(seatGroup);
 
-    // --- 10. MAST (Shortened) ---
+    // 10. MAST
     const mastGroup = new THREE.Group();
-    // Shortened to 2.8 (was 3.2)
     const mastGeo = new THREE.BoxGeometry(0.1, 2.8, 0.15);
     const mL = new THREE.Mesh(mastGeo, matSteel); mL.position.set(-0.35, 1.6, -0.9); mastGroup.add(mL);
     const mR = new THREE.Mesh(mastGeo, matSteel); mR.position.set(0.35, 1.6, -0.9); mastGroup.add(mR);
