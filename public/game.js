@@ -18,15 +18,31 @@ let isDriving = false;
 let currentDriverId = null;
 
 // --- LOGIN & START ---
-document.getElementById('startBtn').addEventListener('click', () => {
-    const name = document.getElementById('usernameInput').value || "Player";
-    document.getElementById('userNameDisplay').innerText = name;
-    document.getElementById('login').style.display = 'none';
-    document.getElementById('ui').style.display = 'block';
-    
-    init3D();
-    socket.emit('join', { username: name });
-});
+const startBtn = document.getElementById('startBtn');
+if(startBtn) {
+    startBtn.addEventListener('click', () => {
+        try {
+            const nameInput = document.getElementById('usernameInput');
+            const name = nameInput ? (nameInput.value || "Player") : "Player";
+            
+            const display = document.getElementById('userNameDisplay');
+            if(display) display.innerText = name;
+            
+            const loginScreen = document.getElementById('login');
+            if(loginScreen) loginScreen.style.display = 'none';
+            
+            const uiScreen = document.getElementById('ui');
+            if(uiScreen) uiScreen.style.display = 'block';
+            
+            init3D();
+            socket.emit('join', { username: name });
+            console.log("Game started successfully.");
+        } catch (e) {
+            console.error("Error starting game:", e);
+            alert("Game crashed! Check console (F12) for error.");
+        }
+    });
+}
 
 function init3D() {
     scene = new THREE.Scene();
@@ -42,13 +58,16 @@ function init3D() {
     renderer.outputEncoding = THREE.sRGBEncoding; 
     document.body.appendChild(renderer.domElement);
 
-    controls = new THREE.PointerLockControls(camera, document.body);
+    // Try/Catch for controls in case library is missing
+    try {
+        controls = new THREE.PointerLockControls(camera, document.body);
+        document.addEventListener('click', () => { controls.lock(); });
+    } catch(e) {
+        console.warn("PointerLockControls missing or failed.");
+    }
+
     camera.position.set(5, 5, 10);
     camera.lookAt(0, 0, 0);
-    
-    document.addEventListener('click', () => {
-        controls.lock();
-    });
 
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
     scene.add(ambientLight);
@@ -65,7 +84,7 @@ function init3D() {
     ground.receiveShadow = true;
     scene.add(ground);
 
-    // --- BUILD THE V14 FORKLIFT ---
+    // --- BUILD THE FORKLIFT ---
     buildForklift();
 
     window.addEventListener('keydown', (e) => {
@@ -93,7 +112,7 @@ function init3D() {
     animate();
 }
 
-// --- 🏗️ THE BUILDER (V14) ---
+// --- 🏗️ THE BUILDER (V15) ---
 function buildForklift() {
     forklift = new THREE.Group();
     
@@ -122,6 +141,7 @@ function buildForklift() {
     const rearBlock = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.7, 0.8), matBody);
     rearBlock.position.set(0, 0.85, 0.8); rearBlock.castShadow = true; chassisGroup.add(rearBlock);
 
+    // Counterweight
     const cwBox = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.9, 0.5), matBody); cwBox.position.set(0, 0.95, 1.35); chassisGroup.add(cwBox);
     const cornerGeo = new THREE.CylinderGeometry(0.25, 0.25, 0.9, 16);
     const cL = new THREE.Mesh(cornerGeo, matBody); cL.position.set(-0.4, 0.95, 1.35); chassisGroup.add(cL);
@@ -135,8 +155,8 @@ function buildForklift() {
     const floor = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.1, 1.0), matBody);
     floor.position.set(0, 0.45, 0.1); chassisGroup.add(floor);
 
-    // --- 4. FENDERS & SIDE SKIRTS (ANGLED) ---
-    // Front Arches
+    // --- 4. FENDERS & SKIRTS ---
+    // Front Arches (Retracted so they don't hit mast)
     const archGeo = new THREE.CylinderGeometry(0.5, 0.5, 0.3, 32, 1, true, 0, Math.PI);
     const fFL = new THREE.Mesh(archGeo, matBody); fFL.rotation.z = Math.PI/2; fFL.position.set(-0.55, 0.4, -0.5); chassisGroup.add(fFL);
     const fFR = new THREE.Mesh(archGeo, matBody); fFR.rotation.z = Math.PI/2; fFR.position.set(0.55, 0.4, -0.5); chassisGroup.add(fFR);
@@ -146,25 +166,14 @@ function buildForklift() {
     const fRL = new THREE.Mesh(boxFenderGeo, matBody); fRL.position.set(-0.55, 0.7, 0.8); chassisGroup.add(fRL);
     const fRR = new THREE.Mesh(boxFenderGeo, matBody); fRR.position.set(0.55, 0.7, 0.8); chassisGroup.add(fRR);
 
-    // ** NEW ANGLED CONNECTORS **
-    // Step (Flat part)
+    // Angled Connectors
     const stepGeo = new THREE.BoxGeometry(0.3, 0.05, 0.8);
     const sL = new THREE.Mesh(stepGeo, matBody); sL.position.set(-0.55, 0.4, -0.1); chassisGroup.add(sL);
     const sR = new THREE.Mesh(stepGeo, matBody); sR.position.set(0.55, 0.4, -0.1); chassisGroup.add(sR);
 
-    // Ramp (Angled part connecting step to rear fender)
     const rampGeo = new THREE.BoxGeometry(0.3, 0.05, 0.55);
-    
-    const rL = new THREE.Mesh(rampGeo, matBody);
-    rL.position.set(-0.55, 0.55, 0.45); // Centered between step and rear
-    rL.rotation.x = -0.6; // Angled Up
-    chassisGroup.add(rL);
-
-    const rR = new THREE.Mesh(rampGeo, matBody);
-    rR.position.set(0.55, 0.55, 0.45);
-    rR.rotation.x = -0.6; // Angled Up
-    chassisGroup.add(rR);
-
+    const rL = new THREE.Mesh(rampGeo, matBody); rL.position.set(-0.55, 0.55, 0.45); rL.rotation.x = -0.6; chassisGroup.add(rL);
+    const rR = new THREE.Mesh(rampGeo, matBody); rR.position.set(0.55, 0.55, 0.45); rR.rotation.x = -0.6; chassisGroup.add(rR);
 
     // 5. UNDERCARRIAGE
     const base = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.4, 2.0), matDark); base.position.set(0, 0.4, 0.3); chassisGroup.add(base);
@@ -211,10 +220,12 @@ function buildForklift() {
     // 9. INTERIOR
     const steering = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.6), matDark); steering.position.set(0, 1.4, -0.4); steering.rotation.x = 0.5; forklift.add(steering);
     const wheel = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.03, 8, 16), matDark); wheel.position.set(0, 1.7, -0.55); wheel.rotation.x = 0.5; forklift.add(wheel);
+    
     const seatGroup = new THREE.Group();
     const sBot = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.15, 0.6), matSeat); sBot.position.set(0, 0, 0); seatGroup.add(sBot);
     const sBack = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.7, 0.1), matSeat); sBack.position.set(0, 0.35, 0.3); sBack.rotation.x = -0.15; seatGroup.add(sBack);
-    seatGroup.position.set(0, 1.25, 0.6); forklift.add(seatGroup);
+    seatGroup.position.set(0, 1.25, 0.6); // Lowered Seat Position
+    forklift.add(seatGroup);
 
     // 10. MAST
     const mastGroup = new THREE.Group();
@@ -347,7 +358,7 @@ function animate() {
                 forkHeight: forksPart ? forksPart.position.y - 0.5 : 0 
             });
         }
-    } else if (controls.isLocked) {
+    } else if (controls && controls.isLocked) {
         let delta = 0.016;
         let speed = isShifting ? 150.0 : 400.0;
         let targetHeight = isShifting ? 1.2 : 1.6;
